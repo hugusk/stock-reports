@@ -139,7 +139,7 @@ footer a { color:var(--ink-3); }
 
 <div class="tabs" id="main-tabs">
   <button data-v="kr" class="on">KR 스크리너</button>
-  <button data-v="dash">ETF 스크리너</button>
+  <button data-v="dash">ETF 트래커</button>
 </div>
 
 <div class="view on" id="v-kr">
@@ -1254,7 +1254,7 @@ renderAll();
 const initView = qp.get('view');
 if (initView === 'kr' || initView === 'dash') {
   document.querySelector(`#main-tabs button[data-v="${initView}"]`)?.click();
-} else if (initView) {  // 서브탭 이름이면 ETF 스크리너로 전환 후 해당 서브탭 오픈
+} else if (initView) {  // 서브탭 이름이면 ETF 트래커로 전환 후 해당 서브탭 오픈
   document.querySelector('#main-tabs button[data-v="dash"]')?.click();
   document.querySelector(`#sub-tabs button[data-v="${initView}"]`)?.click();
 }
