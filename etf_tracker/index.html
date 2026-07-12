@@ -1045,16 +1045,30 @@ async function renderHoldings(e) {
       `</tr>`).join('') + '</tbody></table>';
   };
   renderRows(top10.length?top10:[], false, false);
-  if (IS_SERVER) {
-    try {
-      const full = await api('/api/holdings?etf='+e.code);
-      if (full.length) {
-        const sharesMode = full.every(r=>r.weight==null);
-        const hasDiff = full.some(r=>r.prev_date);
-        renderRows(full, sharesMode, hasDiff);
-      }
-    } catch(err) {}
-  }
+  try {
+    let full = [];
+    if (IS_SERVER) {
+      full = await api('/api/holdings?etf='+e.code);
+    } else {
+      const all = await staticHoldings();
+      const h = all?.etfs?.[e.code];
+      if (h) full = h.rows.map(r => ({
+        name: r[0], weight: r[1], shares: r[2], d_w: r[3], d_sh: r[4],
+        status: r[5], prev_date: h.p,
+      }));
+    }
+    if (full.length) {
+      const sharesMode = full.every(r=>r.weight==null);
+      const hasDiff = full.some(r=>r.prev_date);
+      renderRows(full, sharesMode, hasDiff);
+    }
+  } catch(err) {}
+}
+let HOLD_STATIC = null;   // 공개 페이지: holdings.json 1회 로드 후 재사용
+function staticHoldings() {
+  if (!HOLD_STATIC)
+    HOLD_STATIC = fetch('holdings.json').then(r => r.ok ? r.json() : null).catch(() => null);
+  return HOLD_STATIC;
 }
 function closeModal() {
   $('#modal').classList.remove('on');
