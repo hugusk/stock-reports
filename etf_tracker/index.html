@@ -609,10 +609,29 @@ async function api(path) {
   return r.json();
 }
 const candleCache = {};
+let CANDLES_STATIC = null;   // 공개 페이지: candles.json(전 ETF ~15개월 OHLCV) 1회 로드
+function staticCandles() {
+  if (!CANDLES_STATIC)
+    CANDLES_STATIC = fetch('candles.json').then(r => {
+      if (!r.ok) throw new Error('일봉 데이터 없음 ('+r.status+')');
+      return r.json();
+    }).catch(e => { CANDLES_STATIC = null; throw e; });
+  return CANDLES_STATIC;
+}
 async function getCandles(code, count=2000) {
   const key = code+':'+count;
   if (candleCache[key]) return candleCache[key];
-  const bars = await api(`/api/candles?code=${code}&count=${count}`);
+  let bars;
+  if (IS_SERVER) {
+    bars = await api(`/api/candles?code=${code}&count=${count}`);
+  } else {
+    const all = await staticCandles();
+    bars = (all.etfs[code]||[]).map(b => {
+      const d = String(b[0]);
+      return {t: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6), o: b[1], h: b[2], l: b[3], c: b[4], v: b[5]};
+    });
+    if (!bars.length) throw new Error('이 종목의 일봉 데이터가 없습니다');
+  }
   candleCache[key] = bars;
   return bars;
 }
@@ -1007,12 +1026,8 @@ async function openChart(code) {
   renderHoldings(e);
   $('#modal').classList.add('on');
   renderIndBar();
-  if (!IS_SERVER) {
-    $('#chart').innerHTML = '<div class="warn" style="margin:20px">차트는 로컬 서버 모드에서 지원됩니다 — ' +
-      '<code>venv/bin/python3 -m etf_tracker serve</code> 후 <code>http://localhost:8898</code>로 열어주세요.</div>';
-    return;
-  }
-  $('#chart').innerHTML = '<div class="note" style="padding:20px">일봉 로딩 중...</div>';
+  $('#chart').innerHTML = '<div class="note" style="padding:20px">일봉 로딩 중...' +
+    (IS_SERVER ? '' : ' (공개 페이지 — 최초 1회 전 종목 일봉 다운로드, 수 초 소요 · 최근 15개월)') + '</div>';
   try {
     modalBars = await getCandles(code);
     renderModalChart();
@@ -1284,8 +1299,8 @@ async function runCompare() {
     es.map(e=>`<th style="text-align:right">${esc(e.name)}</th>`).join('') + '</tr></thead><tbody>' +
     METRICS.map(([l,f])=>`<tr style="cursor:default"><td class="l mut">${l}</td>${es.map(e=>`<td>${f(e)}</td>`).join('')}</tr>`).join('') +
     '</tbody></table></div>';
-  if (IS_SERVER) { $('#c-chart-wrap').style.display=''; await runCompareChart(); }
-  else $('#c-chart-wrap').style.display='none';  // 정규화 수익률 차트는 일봉 프록시 필요 — 로컬 전용
+  $('#c-chart-wrap').style.display='';
+  await runCompareChart();   // 정적 모드는 candles.json 기반 (최근 15개월)
   await runOverlap();
 }
 async function runCompareChart() {
