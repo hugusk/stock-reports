@@ -1100,12 +1100,7 @@ function initViews() {
   const opt = d => `<option value="${d}">${fmtDate(d)}</option>`;
   $('#w-from').innerHTML = dates.slice().reverse().map(opt).join('');
   $('#w-to').innerHTML = dates.map(opt).join('');
-  if (!IS_SERVER) {
-    const warn = '<div class="warn">이 탭은 구성종목 이력(SQLite)이 필요해 로컬 서버 모드 전용입니다 — ' +
-      '<code>venv/bin/python3 -m etf_tracker serve</code> 실행 후 <code>http://localhost:8898</code></div>';
-    $('#w-result').innerHTML = warn; $('#tr-result').innerHTML = warn;
-    $('#c-overlap').innerHTML = warn;
-  }
+  // 공개(정적) 모드에서도 비중변화·추이·오버랩은 h/날짜.json 정적 스냅샷으로 동작
   $('#w-go').onclick = runWeights;
   $('#w-q').addEventListener('keydown', ev=>{ if(ev.key==='Enter') runWeights(); });
   $('#tr-go').onclick = runTrend;
@@ -1116,14 +1111,79 @@ function initViews() {
   $('#c-period').onchange = () => cmpChart && runCompareChart();
 }
 
+/* ── 정적(공개 페이지) 데이터 레이어 — 서버 API와 동일 응답 형태로 계산 ── */
+const SNAP_CACHE = {};   // 날짜별 h/YYYYMMDD.json 1회 로드 후 재사용
+function fetchSnap(d) {
+  if (!SNAP_CACHE[d])
+    SNAP_CACHE[d] = fetch('h/'+d+'.json').then(r => {
+      if (!r.ok) throw new Error('스냅샷 없음: '+d);
+      return r.json();
+    }).catch(e => { delete SNAP_CACHE[d]; throw e; });
+  return SNAP_CACHE[d];
+}
+const STATIC_TREND_MAX = 15;  // 공개 페이지 추이 조회 상한 (날짜 파일 수 = 다운로드 양)
+async function apiStockWeights(q, dFrom, dTo) {
+  if (IS_SERVER)
+    return api(`/api/stock-weights?q=${encodeURIComponent(q)}&from=${dFrom}&to=${dTo}`);
+  const dates = DATA.snapshot_dates || [];
+  if (!dates.length) return {dates: [], rows: []};
+  dTo = dates.includes(dTo) ? dTo : dates[0];
+  dFrom = dates.includes(dFrom) ? dFrom : dates[dates.length-1];
+  const [sf, st] = await Promise.all([fetchSnap(dFrom), fetchSnap(dTo)]);
+  const ql = q.toLowerCase();
+  const by = {};
+  const scan = (snap, isTo) => {
+    for (const [ec, rows] of Object.entries(snap.etfs || {}))
+      for (const r of rows) {
+        const [c, nm, w, sh, amt] = r;
+        if (!(c === q || (nm||'').toLowerCase().includes(ql))) continue;
+        const e = by[ec] || (by[ec] = {etf_code: ec, stock_code: c, stock_name: nm});
+        if (isTo) { e.w_to = w; e.sh_to = sh; e.amt_to = amt; }
+        else { e.w_from = w; e.sh_from = sh; }
+      }
+  };
+  scan(sf, false); scan(st, true);
+  const rows = Object.values(by).filter(e => 'w_to' in e || 'w_from' in e);
+  rows.forEach(e => {
+    e.change = (e.w_to!=null && e.w_from!=null) ? +(e.w_to-e.w_from).toFixed(3) : null;
+    e.sh_change = (e.sh_to!=null && e.sh_from!=null) ? +(e.sh_to-e.sh_from).toFixed(2) : null;
+  });
+  rows.sort((a,b)=>(b.w_to||0)-(a.w_to||0));
+  return {dates, d_from: dFrom, d_to: dTo, rows};
+}
+async function apiHoldingsTrend(code, days) {
+  if (IS_SERVER) return api(`/api/holdings-trend?etf=${code}&days=${days}`);
+  const dates = (DATA.snapshot_dates || []).slice(0, Math.min(days, STATIC_TREND_MAX)).slice().reverse();
+  if (!dates.length) return {dates: [], stocks: {}};
+  const snaps = await Promise.all(dates.map(fetchSnap));
+  const stocks = {};
+  snaps.forEach((snap, i) => {
+    for (const r of ((snap.etfs || {})[code] || [])) {
+      const [c, nm, w, sh] = r;
+      const key = nm || c;
+      const s = stocks[key] || (stocks[key] = {code: c,
+        weights: Array(dates.length).fill(null), shares: Array(dates.length).fill(null)});
+      s.weights[i] = w; s.shares[i] = sh;
+    }
+  });
+  return {dates, stocks};
+}
+async function apiOverlap(codes) {
+  if (IS_SERVER) return api('/api/overlap?codes='+codes.join(','));
+  const all = await staticHoldings();
+  const out = {};
+  for (const c of codes)
+    out[c] = ((all?.etfs?.[c]?.rows) || []).map(r => ({name: r[0], weight: r[1], shares: r[2]}));
+  return out;
+}
+
 /* ── 종목별 비중변화 ── */
 async function runWeights() {
-  if (!IS_SERVER) return;
   const q = $('#w-q').value.trim();
   if (!q) return;
   $('#w-result').innerHTML = '<div class="note">조회 중...</div>';
   try {
-    const d = await api(`/api/stock-weights?q=${encodeURIComponent(q)}&from=${$('#w-from').value}&to=${$('#w-to').value}`);
+    const d = await apiStockWeights(q, $('#w-from').value, $('#w-to').value);
     $('#w-cnt').textContent = d.rows.length + '개 ETF';
     if (!d.rows.length) { $('#w-result').innerHTML = '<div class="note">해당 종목을 담은 ETF가 없습니다.</div>'; return; }
     const multi = new Set(d.rows.map(r=>r.stock_name)).size > 1;
@@ -1146,15 +1206,16 @@ async function runWeights() {
 
 /* ── 구성종목 추이 ── */
 async function runTrend() {
-  if (!IS_SERVER) return;
   const code = resolveEtf($('#tr-q').value);
   if (!code) { $('#tr-cnt').textContent = 'ETF를 찾을 수 없습니다'; return; }
   const e = byCode[code];
-  $('#tr-cnt').textContent = e.name + ' 조회 중...';
+  $('#tr-cnt').textContent = e.name + ' 조회 중...' +
+    (IS_SERVER ? '' : ' (최초 1회 날짜별 스냅샷 다운로드 — 수 초 걸릴 수 있음)');
   try {
-    const d = await api(`/api/holdings-trend?etf=${code}&days=60`);
+    const d = await apiHoldingsTrend(code, 60);
     const n = d.dates.length;
-    $('#tr-cnt').textContent = `${e.name} — 스냅샷 ${n}거래일`;
+    $('#tr-cnt').textContent = `${e.name} — 스냅샷 ${n}거래일` +
+      (IS_SERVER ? '' : ` (공개 페이지는 최근 ${STATIC_TREND_MAX}일까지)`);
     if (!n) { $('#tr-result').innerHTML = '<div class="note">이력이 없습니다.</div>'; return; }
     const entries = Object.entries(d.stocks);
     const useShares = entries.every(([_,s]) => s.weights.every(w=>w==null));
@@ -1223,7 +1284,9 @@ async function runCompare() {
     es.map(e=>`<th style="text-align:right">${esc(e.name)}</th>`).join('') + '</tr></thead><tbody>' +
     METRICS.map(([l,f])=>`<tr style="cursor:default"><td class="l mut">${l}</td>${es.map(e=>`<td>${f(e)}</td>`).join('')}</tr>`).join('') +
     '</tbody></table></div>';
-  if (IS_SERVER) { $('#c-chart-wrap').style.display=''; await runCompareChart(); await runOverlap(); }
+  if (IS_SERVER) { $('#c-chart-wrap').style.display=''; await runCompareChart(); }
+  else $('#c-chart-wrap').style.display='none';  // 정규화 수익률 차트는 일봉 프록시 필요 — 로컬 전용
+  await runOverlap();
 }
 async function runCompareChart() {
   const n = +$('#c-period').value;
@@ -1244,7 +1307,7 @@ async function runCompareChart() {
 }
 async function runOverlap() {
   try {
-    const d = await api('/api/overlap?codes='+cmpSel.join(','));
+    const d = await apiOverlap(cmpSel);
     const maps = cmpSel.map(c => { const m={};
       (d[c]||[]).forEach(h=>{ if(h.name) m[h.name]=h; }); return m; });
     const names = {};
