@@ -302,6 +302,20 @@ document.querySelectorAll('#sub-tabs button').forEach(b => b.onclick = () => {
 const byCode = {};
 function indexData() { DATA.etfs.forEach(e => byCode[e.code] = e); }
 indexData();
+const isCashName = n => /원화|현금|예금|설정/.test(n || '');   // CU 내 현금성 행 판별
+
+/* ── 대시보드 → 탭 이동 (ETF는 구성종목 추이, 개별 기업은 종목별 비중변화) ── */
+function gotoTrend(code) {
+  document.querySelector('#sub-tabs button[data-v="trend"]')?.click();
+  const e = byCode[code];
+  $('#tr-q').value = e ? `${e.name} (${code})` : code;
+  runTrend();
+}
+function gotoWeights(q) {
+  document.querySelector('#sub-tabs button[data-v="weights"]')?.click();
+  $('#w-q').value = q;
+  runWeights();
+}
 
 /* ── 대시보드 ─────────────────────────────────── */
 const PERIODS = {d1:'1일', w1:'1주', m1:'1개월', m3:'3개월', m6:'6개월', ytd:'YTD', y1:'1년', y3:'3년'};
@@ -362,7 +376,7 @@ function rsCard() {
       .sort((a,b) => b.rs_adj - a.rs_adj).slice(0,10);
     const max = rows.length ? Math.max(...rows.map(e=>Math.max(e.rs,0)), 0.1) : 1;
     div.querySelector('.rank').innerHTML = rows.map((e,i) =>
-      `<div class="row" onclick="openChart('${e.code}')">
+      `<div class="row" onclick="gotoTrend('${e.code}')">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(e.name)}">${esc(e.name)} <span class="mut">${fmtPct(e.chg,1)}</span>${
           grpSim && e.rs_sim ? ` <span class="mut" style="font-size:10.5px; border:1px solid var(--line); border-radius:8px; padding:0 5px">유사 +${e.rs_sim}</span>` : ''}</span>
@@ -439,7 +453,7 @@ function flowCard(title, side) {
     const color = side==='buy' ? 'var(--up)' : 'var(--down)';
     const cnt = side==='buy' ? 'buy_etfs' : 'sell_etfs';
     div.querySelector('.rank').innerHTML = shown.map((r,i) =>
-      `<div class="row" style="cursor:default">
+      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(r.name)}">${esc(r.name)} <span class="mut">(${r[cnt] ?? r.etfs}개 ETF)</span></span>
         <span class="bar"><i style="width:${Math.abs(r[key])/max*100}%; background:${color}; opacity:.75"></i></span>
@@ -475,7 +489,7 @@ function broadCard(title, side) {
     const rows = all.filter(r => seg==='all' || (seg==='kr' ? isKr(r) : !isKr(r))).slice(0,10);
     const max = rows.length ? Math.max(...rows.map(r=>r[cnt])) : 1;
     div.querySelector('.rank').innerHTML = rows.map((r,i) =>
-      `<div class="row" style="cursor:default">
+      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
         <span class="bar"><i style="width:${r[cnt]/max*100}%; background:${color}; opacity:.75"></i></span>
@@ -514,7 +528,7 @@ function rankCard(title, kind, defP) {
     const up = getComputedStyle(document.documentElement).getPropertyValue('--up');
     const down = getComputedStyle(document.documentElement).getPropertyValue('--down');
     div.querySelector('.rank').innerHTML = rows.map(([e,v,txt],i) =>
-      `<div class="row" onclick="openChart('${e.code}')">
+      `<div class="row" onclick="gotoTrend('${e.code}')">
         <span class="n">${i+1}</span><span class="nm" title="${esc(e.name)}">${esc(e.name)}</span>
         <span class="bar"><i style="width:${Math.abs(v)/max*100}%;
           background:${kind==='outflow'?down:up}; opacity:.75"></i></span>
@@ -1061,7 +1075,9 @@ async function renderHoldings(e) {
       (hasDiff ? `<thead><tr><th class="l">종목</th><th>${sharesMode?'주수':'비중'}</th><th>Δ전일</th></tr></thead>` : '') +
       `<tbody>` + rows.map(r =>
       `<tr style="cursor:default"><td class="l">${esc(r.name)}</td>` +
-      `<td>${r.weight!=null ? fmt(r.weight,2)+'%' : (r.shares!=null ? fmt(r.shares,1)+'주' : '–')}</td>` +
+      `<td>${sharesMode
+        ? (r.shares!=null ? fmt(r.shares,1)+'주' : '–')
+        : (r.weight!=null ? fmt(r.weight,2)+'%' : (r.shares!=null ? fmt(r.shares,1)+'주' : '–'))}</td>` +
       (hasDiff ? `<td>${fmtDelta(r, sharesMode)}</td>` : '') +
       `</tr>`).join('') + '</tbody></table>';
   };
@@ -1079,7 +1095,9 @@ async function renderHoldings(e) {
       }));
     }
     if (full.length) {
-      const sharesMode = full.every(r=>r.weight==null);
+      // 현금성 행은 비중 판정에서 제외 — 장 전 PDF는 '현금 100% + 종목 비중 NULL'로 와서
+      // (KRX가 장중에 채움) 현금 행 하나 때문에 주수 폴백이 안 걸리던 문제
+      const sharesMode = full.every(r => r.weight==null || isCashName(r.name));
       const hasDiff = full.some(r=>r.prev_date);
       renderRows(full, sharesMode, hasDiff);
     }
@@ -1205,7 +1223,15 @@ async function runWeights() {
   $('#w-result').innerHTML = '<div class="note">조회 중...</div>';
   try {
     const d = await apiStockWeights(q, $('#w-from').value, $('#w-to').value);
-    $('#w-cnt').textContent = d.rows.length + '개 ETF';
+    const chgOf = r => r.change ?? r.sh_change;
+    const inNew = r => r.w_from == null && r.sh_from == null;   // 신규 편입
+    const isOut = r => r.w_to == null && r.sh_to == null;       // 편출
+    const inc = d.rows.filter(r => (chgOf(r) ?? 0) > 0 || inNew(r)).length;
+    const dec = d.rows.filter(r => (chgOf(r) ?? 0) < 0 || isOut(r)).length;
+    const tot = d.rows.length;
+    $('#w-cnt').innerHTML = tot ? `${tot}개 ETF · ` +
+      `<span class="up">▲증가 ${inc}개 (${fmt(inc/tot*100,1)}%)</span> · ` +
+      `<span class="down">▼감소 ${dec}개 (${fmt(dec/tot*100,1)}%)</span>` : '0개 ETF';
     if (!d.rows.length) { $('#w-result').innerHTML = '<div class="note">해당 종목을 담은 ETF가 없습니다.</div>'; return; }
     const multi = new Set(d.rows.map(r=>r.stock_name)).size > 1;
     $('#w-result').innerHTML = `<table class="tbl"><thead><tr>` +
@@ -1216,9 +1242,11 @@ async function runWeights() {
         return `<tr onclick="openChart('${r.etf_code}')">` +
           `<td class="l"><span class="nm-main">${esc(e?e.name:r.etf_code)}</span> <span class="nm-sub">${esc(e?.issuer||'')}</span></td>` +
           (multi?`<td class="l">${esc(r.stock_name)}</td>`:'') +
-          `<td>${r.w_from!=null?fmt(r.w_from,2)+'%':'–'}</td><td>${r.w_to!=null?fmt(r.w_to,2)+'%':'–'}</td>` +
-          `<td>${r.change==null ? (r.w_to==null?'<span class="down">편출</span>':r.w_from==null?'<span class="up">신규</span>':'–')
-                : fmtPct(r.change,2).replace('%','%p')}</td>` +
+          `<td>${r.w_from!=null?fmt(r.w_from,2)+'%':(r.sh_from!=null?fmt(r.sh_from,1)+'주':'–')}</td>` +
+          `<td>${r.w_to!=null?fmt(r.w_to,2)+'%':(r.sh_to!=null?fmt(r.sh_to,1)+'주':'–')}</td>` +
+          `<td>${r.change!=null ? fmtPct(r.change,2).replace('%','%p')
+                : (r.w_to==null&&r.sh_to==null) ? '<span class="down">편출</span>'
+                : (r.w_from==null&&r.sh_from==null) ? '<span class="up">신규</span>' : '–'}</td>` +
           `<td>${r.sh_change==null?'–':(r.sh_change>0?'+':'')+fmt(r.sh_change,1)}</td>` +
           `<td>${r.amt_to==null?'–':fmtAum(r.amt_to/1e8)}</td></tr>`; }).join('') +
       '</tbody></table>';
@@ -1239,7 +1267,8 @@ async function runTrend() {
       (IS_SERVER ? '' : ` (공개 페이지는 최근 ${STATIC_TREND_MAX}일까지)`);
     if (!n) { $('#tr-result').innerHTML = '<div class="note">이력이 없습니다.</div>'; return; }
     const entries = Object.entries(d.stocks);
-    const useShares = entries.every(([_,s]) => s.weights.every(w=>w==null));
+    const useShares = entries.filter(([nm]) => !isCashName(nm))
+      .every(([_,s]) => s.weights.every(w=>w==null));
     const val = s => useShares ? s.shares : s.weights;
     const latest = entries.map(([nm,s]) => ({nm, code:s.code, s,
         last: lastNonNull(val(s)), first: firstNonNull(val(s))}))
