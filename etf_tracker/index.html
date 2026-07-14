@@ -1274,9 +1274,10 @@ async function runTrend() {
     $('#tr-cnt').textContent = `${e.name} — 스냅샷 ${n}거래일` +
       (IS_SERVER ? '' : ` (공개 페이지는 최근 ${STATIC_TREND_MAX}일까지)`);
     if (!n) { $('#tr-result').innerHTML = '<div class="note">이력이 없습니다.</div>'; return; }
-    const entries = Object.entries(d.stocks);
-    const useShares = entries.filter(([nm]) => !isCashName(nm))
-      .every(([_,s]) => s.weights.every(w=>w==null));
+    // 현금성 행 제외 — CU 설정현금은 종목 추이가 아닌 데다, 장 전 스냅샷에서
+    // '현금 100%'로 찍혀 차트 스케일·기간변화를 왜곡함
+    const entries = Object.entries(d.stocks).filter(([nm]) => !isCashName(nm));
+    const useShares = entries.every(([_,s]) => s.weights.every(w=>w==null));
     const val = s => useShares ? s.shares : s.weights;
     const latest = entries.map(([nm,s]) => ({nm, code:s.code, s,
         last: lastNonNull(val(s)), first: firstNonNull(val(s))}))
@@ -1367,7 +1368,7 @@ async function runOverlap() {
   try {
     const d = await apiOverlap(cmpSel);
     const maps = cmpSel.map(c => { const m={};
-      (d[c]||[]).forEach(h=>{ if(h.name) m[h.name]=h; }); return m; });
+      (d[c]||[]).forEach(h=>{ if(h.name && !isCashName(h.name)) m[h.name]=h; }); return m; });
     const names = {};
     maps.forEach(m => Object.keys(m).forEach(nm => names[nm]=(names[nm]||0)+1));
     const common = Object.entries(names).filter(([_,cnt])=>cnt>=2)
