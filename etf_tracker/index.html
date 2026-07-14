@@ -446,7 +446,7 @@ function flowCard(title, side) {
   const render = () => {
     const mode = div.querySelector('select').value;
     const rows = (f[`top_${side}_${mode}`] || [])
-      .filter(r => seg==='all' || (r.mkt || (/^\d{6}$/.test(r.code||'') ? 'KOSPI' : 'FO')) === seg);
+      .filter(r => seg==='all' || (r.mkt || (/^[0-9A-Z]{6}$/.test(r.code||'') ? 'KOSPI' : 'FO')) === seg);
     const key = mode === 'shares' ? 'sh' : 'amt';
     const shown = rows.slice(0,10);
     const max = shown.length ? Math.max(...shown.map(r=>Math.abs(r[key]))) : 1;
@@ -477,7 +477,7 @@ function broadCard(title, side) {
   const div = document.createElement('div'); div.className='card';
   const cnt = side==='buy' ? 'buy_etfs' : 'sell_etfs';
   const color = side==='buy' ? 'var(--up)' : 'var(--down)';
-  const isKr = r => /^\d{6}$/.test(r.code||'');
+  const isKr = r => /^[0-9A-Z]{6}$/.test(r.code||'');
   let seg = 'all';
   div.innerHTML = `<h3>${title}
       <span class="chips" style="margin-left:auto">
@@ -1121,9 +1121,9 @@ document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeModal()
 
 function resolveEtf(q) {
   q = (q||'').trim();
-  const m = q.match(/\((\d{6})\)\s*$/);
+  const m = q.match(/\(([0-9A-Z]{6})\)\s*$/);
   if (m) return byCode[m[1]] ? m[1] : null;
-  if (/^\d{6}$/.test(q)) return byCode[q] ? q : null;
+  if (/^[0-9A-Z]{6}$/.test(q)) return byCode[q] ? q : null;
   const exact = DATA.etfs.find(e=>e.name===q);
   if (exact) return exact.code;
   const part = DATA.etfs.filter(e=>e.name.toLowerCase().includes(q.toLowerCase()));
@@ -1145,7 +1145,7 @@ function initViews() {
   $('#tr-go').onclick = runTrend;
   $('#tr-q').addEventListener('keydown', ev=>{ if(ev.key==='Enter') runTrend(); });
   $('#c-q').addEventListener('keydown', ev=>{ if(ev.key==='Enter'){ addCmp($('#c-q').value); $('#c-q').value=''; } });
-  $('#c-q').addEventListener('change', ()=>{ if(/\(\d{6}\)/.test($('#c-q').value)){ addCmp($('#c-q').value); $('#c-q').value=''; } });
+  $('#c-q').addEventListener('change', ()=>{ if(/\([0-9A-Z]{6}\)/.test($('#c-q').value)){ addCmp($('#c-q').value); $('#c-q').value=''; } });
   $('#c-go').onclick = runCompare;
   $('#c-period').onchange = () => cmpChart && runCompareChart();
 }
@@ -1392,7 +1392,7 @@ if (initView === 'kr' || initView === 'dash') {
   document.querySelector(`#sub-tabs button[data-v="${initView}"]`)?.click();
 }
 if ($('#v-kr').classList.contains('on')) loadKrFrame();
-const hm = location.hash.match(/^#etf=(\d{6})/);
+const hm = location.hash.match(/^#etf=([0-9A-Za-z]{6})/);
 if (hm && byCode[hm[1]]) { document.querySelector('#main-tabs button[data-v="dash"]')?.click(); openChart(hm[1]); }
 if (IS_SERVER) {
   $('#refresh-btn').style.display='';
