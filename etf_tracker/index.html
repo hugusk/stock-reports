@@ -1401,6 +1401,8 @@ if (initView === 'kr' || initView === 'dash') {
   document.querySelector(`#sub-tabs button[data-v="${initView}"]`)?.click();
 }
 if ($('#v-kr').classList.contains('on')) loadKrFrame();
+const wq = new URLSearchParams(location.search).get('wq');
+if (wq) { document.querySelector('#main-tabs button[data-v="dash"]')?.click(); gotoWeights(wq); }
 const hm = location.hash.match(/^#etf=([0-9A-Za-z]{6})/);
 if (hm && byCode[hm[1]]) { document.querySelector('#main-tabs button[data-v="dash"]')?.click(); openChart(hm[1]); }
 if (IS_SERVER) {
