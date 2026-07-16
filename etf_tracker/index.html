@@ -555,11 +555,12 @@ function broadCard(title, side) {
     const rows = all.filter(r => seg==='all' || (seg==='kr' ? isKr(r) : !isKr(r))).slice(0,15);
     const max = rows.length ? Math.max(...rows.map(r=>r[cnt])) : 1;
     div.querySelector('.rank').innerHTML = rows.map((r,i) =>
-      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}">
+      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}"
+        style="grid-template-columns: 18px 1fr 64px 150px">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
         <span class="bar"><i style="width:${r[cnt]/max*100}%; background:${color}; opacity:.75"></i></span>
-        <span class="v">${r[cnt]}개 ETF · ${r.amt ? (r.amt>0?'+':'−')+fmtAum(Math.abs(r.amt)) : fmt(Math.abs(r.sh))+'주'}</span></div>`).join('')
+        <span class="v" style="white-space:nowrap">${r[cnt]}개 ETF · ${r.amt ? (r.amt>0?'+':'−')+fmtAum(Math.abs(r.amt)) : fmt(Math.abs(r.sh))+'주'}</span></div>`).join('')
       || '<div class="note">해당 종목 없음</div>';
   };
   div.querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
