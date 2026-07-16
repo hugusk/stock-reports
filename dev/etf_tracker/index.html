@@ -401,10 +401,13 @@ function renderRsView() {
   const host = document.getElementById('rs-host');
   host.innerHTML = '';
   const div = document.createElement('div'); div.className='card';
-  let exLev = true, grpSim = true, maSeg = 'all';
+  let exLev = true, grpSim = true, maSeg = 'all', seg = 'all';
   const isLev = e => /레버리지|인버스|2X|3X|선물/i.test(e.name);
   div.innerHTML = `<h3>RS 상위 20 ETF <span class="mut" style="font-weight:400">상승 마감만 · 상대강도+대금·회전·유입·연속 블렌드 · 파킹형 제외</span>
       <span class="chips" style="margin-left:auto">
+        <span class="chip on" data-seg="all">전체</span>
+        <span class="chip" data-seg="kr">국내주식중심</span>
+        <span class="chip" data-seg="fo">해외주식중심</span>
         <span class="chip on" data-ma="all">전체</span>
         <span class="chip" data-ma="ma5">5일선 위</span>
         <span class="chip" data-ma="ma10">10일선 위</span>
@@ -415,7 +418,11 @@ function renderRsView() {
     <p class="note" style="margin:4px 0 8px">σ = 시장 내 상대강도 표준편차 단위 · 회전 = 5일 평균 거래대금÷AUM · 유입 = 당일 자금유입÷AUM · N일 = 벤치마크 초과 지속. 행 클릭 → 구성종목 추이</p>
     <div class="rslist"></div>`;
   const render = () => {
+    const segOk = e => seg === 'all'
+      || (seg === 'kr' && e.mkt_class === '국내' && e.asset_class === '주식')
+      || (seg === 'fo' && e.mkt_class === '해외' && e.asset_class === '주식');
     const rows = DATA.etfs.filter(e => e.rs_adj != null
+        && segOk(e)                                            // 국내주식/해외주식 세그먼트
         && (e.chg != null && e.chg > 0)
         && (maSeg === 'all' || e[`rs_${maSeg}`] === true)
         && (!exLev || !isLev(e))
@@ -437,6 +444,11 @@ function renderRsView() {
         </div>
       </div>`).join('') || '<div class="note">조건에 맞는 ETF 없음 (상승 마감 + 필터 기준)</div>';
   };
+  div.querySelectorAll('.chip[data-seg]').forEach(ch => ch.onclick = () => {
+    seg = ch.dataset.seg;
+    div.querySelectorAll('.chip[data-seg]').forEach(x => x.classList.toggle('on', x===ch));
+    render();
+  });
   div.querySelectorAll('.chip[data-ma]').forEach(ch => ch.onclick = () => {
     maSeg = ch.dataset.ma;
     div.querySelectorAll('.chip[data-ma]').forEach(x => x.classList.toggle('on', x===ch));
