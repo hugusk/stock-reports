@@ -64,6 +64,20 @@ header.page .spacer { flex:1; }
 .rank .bar i { position:absolute; top:0; bottom:0; border-radius:4px; }
 .rank .v { text-align:right; font-variant-numeric:tabular-nums; }
 
+/* RS 상위 탭 — 이름 전체 표시형 2줄 행 */
+.rsrow { padding:7px 6px; border-bottom:1px solid var(--grid); cursor:pointer; border-radius:6px; }
+.rsrow:hover { background:var(--hover-wash); }
+.rsrow .r1 { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; font-size:13.5px; }
+.rsrow .r1 .n { color:var(--ink-3); font-size:11px; min-width:18px; }
+.rsrow .r2 { display:grid; grid-template-columns:1fr 300px; gap:12px; align-items:center; margin-top:4px; }
+.rsrow .r2 .bar { height:9px; border-radius:4px; background:var(--chip); position:relative; overflow:hidden; }
+.rsrow .r2 .bar i { position:absolute; top:0; bottom:0; border-radius:4px; }
+.rsrow .r2 .v { text-align:right; font-variant-numeric:tabular-nums; font-size:12.5px; white-space:nowrap; }
+@media (max-width: 700px) {
+  .rsrow .r2 { grid-template-columns:1fr; gap:4px; }
+  .rsrow .r2 .v { text-align:left; white-space:normal; }
+}
+
 .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
 .controls input[type=text], .controls select {
   background:var(--surface-1); color:var(--ink-1); border:1px solid var(--border);
@@ -150,12 +164,11 @@ footer a { color:var(--ink-3); }
 <div class="view" id="v-dash">
   <div class="tabs" id="sub-tabs">
     <button data-v="dashboard" class="on">대시보드</button>
+    <button data-v="rs">RS 상위</button>
     <button data-v="weights">종목별 비중변화</button>
     <button data-v="trend">구성종목 추이</button>
     <button data-v="compare">ETF 비교</button>
-    <button data-v="active">액티브 ETF</button>
-    <button data-v="passive">패시브 ETF</button>
-    <button data-v="dividend">배당 · 커버드콜</button>
+    <button data-v="scr">스크리너</button>
   </div>
 
 <div class="view sub on" id="v-dashboard">
@@ -220,9 +233,18 @@ footer a { color:var(--ink-3); }
   </div>
 </div>
 
-<div class="view sub" id="v-active"><div id="t-active"></div></div>
-<div class="view sub" id="v-passive"><div id="t-passive"></div></div>
-<div class="view sub" id="v-dividend"><div id="t-dividend"></div></div>
+<div class="view sub" id="v-rs"><div id="rs-host"></div></div>
+
+<div class="view sub" id="v-scr">
+  <div class="tabs" id="scr-tabs">
+    <button data-t="active" class="on">액티브 ETF</button>
+    <button data-t="passive">패시브 ETF</button>
+    <button data-t="dividend">배당 · 커버드콜</button>
+  </div>
+  <div id="t-active"></div>
+  <div id="t-passive" style="display:none"></div>
+  <div id="t-dividend" style="display:none"></div>
+</div>
 </div>
 
 <footer>
@@ -368,7 +390,6 @@ function renderDash() {
       '전일 대비 순매수/순매도 종목과 시장 통계가 표시됩니다.</div>';
     cards.appendChild(d);
   }
-  cards.appendChild(rsCard());
   cards.appendChild(rankCard('수익률 TOP 10', 'ret', 'm3'));
   cards.appendChild(rankCard('자금 유입 TOP 10', 'flow', 'm1'));
   cards.appendChild(rankCard('자금 유출 TOP 10', 'outflow', 'm1'));
@@ -376,7 +397,9 @@ function renderDash() {
 }
 /* RS 상위 ETF — 당일 종가의 20·60·120·200일 이평 대비 이격률 평균 (백분위 1~99)
    상승 마감(등락률>0) ETF만 표시, 10일선/20일선 위 마감 필터 */
-function rsCard() {
+function renderRsView() {
+  const host = document.getElementById('rs-host');
+  host.innerHTML = '';
   const div = document.createElement('div'); div.className='card';
   let exLev = true, grpSim = true, maSeg = 'all';
   const isLev = e => /레버리지|인버스|2X|3X|선물/i.test(e.name);
@@ -387,25 +410,30 @@ function rsCard() {
         <span class="chip" data-ma="ma20">20일선 위</span>
         <span class="chip on" data-lev="1">레버리지 제외</span>
         <span class="chip on" data-sim="1">유사상품 묶기</span>
-      </span></h3><div class="rank"></div>`;
+      </span></h3>
+    <p class="note" style="margin:4px 0 8px">σ = 시장 내 상대강도 표준편차 단위 · 회전 = 5일 평균 거래대금÷AUM · 유입 = 당일 자금유입÷AUM · N일 = 벤치마크 초과 지속. 행 클릭 → 구성종목 추이</p>
+    <div class="rslist"></div>`;
   const render = () => {
-    const rows = DATA.etfs.filter(e => e.rs_adj != null           // 파킹형(초저변동)은 RS 부적격
-        && (e.chg != null && e.chg > 0)                       // 상승 마감만
-        && (maSeg === 'all' || e[`rs_${maSeg}`] === true)      // 10/20일선 위 마감
+    const rows = DATA.etfs.filter(e => e.rs_adj != null
+        && (e.chg != null && e.chg > 0)
+        && (maSeg === 'all' || e[`rs_${maSeg}`] === true)
         && (!exLev || !isLev(e))
-        && (!grpSim || !e.rs_dup))                             // 동일 상품군은 대표 1개만
+        && (!grpSim || !e.rs_dup))
       .sort((a,b) => (b.rs_score ?? b.rs_adj) - (a.rs_score ?? a.rs_adj)).slice(0,20);
     const max = rows.length ? Math.max(...rows.map(e=>Math.max(e.rs_z ?? 0, 0)), 0.1) : 1;
-    div.querySelector('.rank').innerHTML = rows.map((e,i) =>
-      `<div class="row" onclick="gotoTrend('${e.code}')" style="grid-template-columns: 18px 1fr 100px 215px">
-        <span class="n">${i+1}</span>
-        <span class="nm" title="${esc(e.name)}">${esc(e.name)} <span class="mut">${fmtPct(e.chg,1)}</span>${
-          grpSim && e.rs_sim ? ` <span class="mut" style="font-size:10.5px; border:1px solid var(--line); border-radius:8px; padding:0 5px">유사 +${e.rs_sim}</span>` : ''}</span>
-        <span class="bar"><i style="width:${Math.max(e.rs_z ?? 0, 0)/max*100}%; background:var(--up); opacity:.75"></i></span>
-        <span class="v"><b>${e.rs_z!=null ? (e.rs_z>0?'+':'')+fmt(e.rs_z,1)+'σ' : 'RS '+(e.rs_pct??'–')}</b><span class="mut"> RS ${e.rs_pct ?? '–'}${
-          e.rs_to!=null ? ' · 회전'+fmt(e.rs_to,1)+'%' : ''}${
-          e.rs_ni!=null ? ' · 유입'+fmt(e.rs_ni,2)+'%' : ''}${
-          e.rs_streak ? ' · '+e.rs_streak+'일' : ''}</span></span>
+    div.querySelector('.rslist').innerHTML = rows.map((e,i) =>
+      `<div class="rsrow" onclick="gotoTrend('${e.code}')">
+        <div class="r1"><span class="n">${i+1}</span><b>${esc(e.name)}</b>${
+          grpSim && e.rs_sim ? ` <span class="mut" style="font-size:10.5px; border:1px solid var(--border); border-radius:8px; padding:0 5px">유사 +${e.rs_sim}</span>` : ''}
+          <span class="${(e.chg||0)>=0?'up':'down'}">${fmtPct(e.chg,1)}</span>
+          <span class="mut" style="font-size:11.5px">${esc(e.issuer||'')} · AUM ${fmtAum(e.aum)}</span></div>
+        <div class="r2">
+          <span class="bar"><i style="width:${Math.max(e.rs_z ?? 0,0)/max*100}%; background:var(--up); opacity:.75"></i></span>
+          <span class="v"><b>${e.rs_z!=null ? (e.rs_z>0?'+':'')+fmt(e.rs_z,1)+'σ' : ''}</b><span class="mut"> RS ${e.rs_pct ?? '–'}${
+            e.rs_to!=null ? ' · 회전'+fmt(e.rs_to,1)+'%' : ''}${
+            e.rs_ni!=null ? ' · 유입'+fmt(e.rs_ni,2)+'%' : ''}${
+            e.rs_streak ? ' · '+e.rs_streak+'일' : ''}</span></span>
+        </div>
       </div>`).join('') || '<div class="note">조건에 맞는 ETF 없음 (상승 마감 + 필터 기준)</div>';
   };
   div.querySelectorAll('.chip[data-ma]').forEach(ch => ch.onclick = () => {
@@ -420,7 +448,7 @@ function rsCard() {
     grpSim = !grpSim; ev.target.classList.toggle('on', grpSim); render();
   };
   render();
-  return div;
+  host.appendChild(div);
 }
 /* 당일 ETF 매매 동향 (구성종목 스냅샷 전일 대비) */
 function flowStatsCard() {
@@ -1419,16 +1447,23 @@ async function runOverlap() {
 /* ── 초기화 ───────────────────────────────────── */
 function renderAll() {
   $('#updated').textContent = DATA.updated + ' · PDF ' + fmtDate(DATA.trd_dd);
-  renderDash(); renderTables(); initViews();
+  renderDash(); renderRsView(); renderTables(); initViews();
 }
+document.querySelectorAll('#scr-tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#scr-tabs button').forEach(x => x.classList.toggle('on', x===b));
+  ['active','passive','dividend'].forEach(k =>
+    document.getElementById('t-'+k).style.display = (k === b.dataset.t ? '' : 'none'));
+});
 renderAll();
-// 딥링크: ?view=kr|dash|dashboard|weights|trend|compare|active|passive|dividend / #etf=069500
+// 딥링크: ?view=kr|dash|dashboard|rs|weights|trend|compare|scr (구 active/passive/dividend는 스크리너 하위 탭으로 매핑)
 const initView = qp.get('view');
 if (initView === 'kr' || initView === 'dash') {
   document.querySelector(`#main-tabs button[data-v="${initView}"]`)?.click();
 } else if (initView) {  // 서브탭 이름이면 ETF 트래커로 전환 후 해당 서브탭 오픈
   document.querySelector('#main-tabs button[data-v="dash"]')?.click();
-  document.querySelector(`#sub-tabs button[data-v="${initView}"]`)?.click();
+  const legacy = {active:'scr', passive:'scr', dividend:'scr'};
+  document.querySelector(`#sub-tabs button[data-v="${legacy[initView]||initView}"]`)?.click();
+  if (legacy[initView]) document.querySelector(`#scr-tabs button[data-t="${initView}"]`)?.click();
 }
 if ($('#v-kr').classList.contains('on')) loadKrFrame();
 const wq = new URLSearchParams(location.search).get('wq');
