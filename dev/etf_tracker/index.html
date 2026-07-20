@@ -112,6 +112,23 @@ table.tbl tbody tr:hover { background:var(--hover-wash); }
 .warn { background:var(--chip); border:1px solid var(--border); border-radius:10px;
   padding:14px 16px; color:var(--ink-2); font-size:13px; }
 
+/* 종목 차트 모달 (KR 스크리너와 동일 — 개별 기업 클릭 시) */
+#smodal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; }
+#smodal.on { display:flex; align-items:center; justify-content:center; padding:20px; }
+.smbox { background:var(--page); border:1px solid var(--border); border-radius:14px;
+  width:min(1180px, 100%); max-height:94vh; overflow-y:auto; padding:16px 20px; }
+.smhead { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.smhead h2 { margin:0; font-size:18px; }
+.smhead .cd { color:var(--ink-3); font-size:13px; }
+.smhead .close { margin-left:auto; font-size:20px; background:none; border:none;
+  color:var(--ink-3); cursor:pointer; }
+.smmeta { display:flex; gap:18px; flex-wrap:wrap; margin:10px 0 10px; font-size:12.5px; }
+.smmeta .m .lab { color:var(--ink-3); font-size:11px; }
+.smmeta .m .val { font-weight:600; }
+.smind { display:flex; gap:5px; flex-wrap:wrap; margin:8px 0; align-items:center; }
+.smind .grp { color:var(--ink-3); font-size:11px; margin:0 2px 0 8px; }
+#schart { height:560px; border:1px solid var(--grid); border-radius:10px; }
+
 /* 차트 모달 */
 #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; }
 #modal.on { display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -234,6 +251,21 @@ footer a { color:var(--ink-3); }
 </div>
 
 <div class="view sub" id="v-rs"><div id="rs-host"></div></div>
+
+<div id="smodal">
+  <div class="smbox">
+    <div class="smhead">
+      <h2 id="sm-name"></h2><span class="cd" id="sm-code"></span>
+      <span class="cd" id="sm-sec"></span>
+      <button class="close" onclick="closeStock()">✕</button>
+    </div>
+    <div class="smmeta" id="sm-meta"></div>
+    <div id="sm-flow" style="margin:2px 0 8px"></div>
+    <div class="smind" id="sm-ind"></div>
+    <div id="schart"></div>
+    <p class="note" id="sm-note" style="margin:8px 0 0"></p>
+  </div>
+</div>
 
 <div class="view sub" id="v-scr">
   <div class="tabs" id="scr-tabs">
@@ -531,7 +563,7 @@ function flowCard(title, side) {
     const color = side==='buy' ? 'var(--up)' : 'var(--down)';
     const cnt = side==='buy' ? 'buy_etfs' : 'sell_etfs';
     div.querySelector('.rank').innerHTML = shown.map((r,i) =>
-      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}">
+      `<div class="row" onclick="stockClick(this.dataset.q)" data-q="${esc(r.code || r.name)}">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(r.name)}">${esc(r.name)} <span class="mut">(${r[cnt] ?? r.etfs}개 ETF)</span></span>
         <span class="bar"><i style="width:${Math.abs(r[key])/max*100}%; background:${color}; opacity:.75"></i></span>
@@ -567,7 +599,7 @@ function broadCard(title, side) {
     const rows = all.filter(r => seg==='all' || (seg==='kr' ? isKr(r) : !isKr(r))).slice(0,15);
     const max = rows.length ? Math.max(...rows.map(r=>r[cnt])) : 1;
     div.querySelector('.rank').innerHTML = rows.map((r,i) =>
-      `<div class="row" onclick="gotoWeights(this.dataset.q)" data-q="${esc(r.code || r.name)}"
+      `<div class="row" onclick="stockClick(this.dataset.q)" data-q="${esc(r.code || r.name)}"
         style="grid-template-columns: 18px 1fr 64px 150px">
         <span class="n">${i+1}</span>
         <span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>
@@ -1196,6 +1228,189 @@ $('#modal').addEventListener('click', ev => { if (ev.target.id==='modal') closeM
 document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeModal(); });
 
 
+/* ── 종목 차트 모달 (KR 스크리너와 동일 — 개별 기업 클릭) ── */
+const SM_OVERLAYS = [
+  {k:'ma5',  l:'MA5',   f:b=>[{s:sma(b,5),  c:'#e8a33d'}]},
+  {k:'ma20', l:'MA20',  on:true, f:b=>[{s:sma(b,20), c:'#2a78d6'}]},
+  {k:'ma60', l:'MA60',  on:true, f:b=>[{s:sma(b,60), c:'#0ca30c'}]},
+  {k:'ma120',l:'MA120', f:b=>[{s:sma(b,120),c:'#9b59b6'}]},
+  {k:'ema',  l:'EMA12/26', f:b=>[{s:ema(b,12),c:'#00a2a2'},{s:ema(b,26),c:'#c05299'}]},
+  {k:'bb',   l:'볼린저(20,2)', f:b=>{const x=bollinger(b,20,2); return [{s:x.up,c:'#8a8a8a'},{s:x.mid,c:'#b5b5b5'},{s:x.lo,c:'#8a8a8a'}];}},
+];
+const SM_PANES = [
+  {k:'vol', l:'거래량', on:true}, {k:'rsi', l:'RSI(14)', on:true},
+  {k:'rsline', l:'RS선(벤치대비)', on:true}, {k:'macd', l:'MACD'}, {k:'stoch', l:'스토캐스틱'},
+];
+const smSel = {ov:{}, pn:{}, period:'all'};
+SM_OVERLAYS.forEach(o=>smSel.ov[o.k]=!!o.on); SM_PANES.forEach(o=>smSel.pn[o.k]=!!o.on);
+let smBars=[], smChart=null, SM_HIST=null, SM_META=null, smMkt='KOSPI';
+const smVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function krMeta(){
+  if (!SM_META) SM_META = fetch(IS_SERVER ? '/kr_screener/meta.json' : '../kr_screener/meta.json')
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  return SM_META;
+}
+async function smFetchBars(code){
+  if (IS_SERVER){
+    const r = await fetch('/api/candles?code='+code+'&count=2000');
+    if (!r.ok) throw new Error('일봉 조회 실패 ('+r.status+')');
+    return r.json();
+  }
+  if (!SM_HIST) SM_HIST = fetch('../kr_screener/hist.json')
+    .then(r=>{ if(!r.ok) throw new Error('일봉 데이터 없음'); return r.json(); })
+    .catch(e=>{ SM_HIST=null; throw e; });
+  const all = await SM_HIST;
+  const rows = (all.bars||{})[code];
+  if (!rows || !rows.length) throw new Error('이 종목의 일봉 데이터가 없습니다');
+  return rows.map(b=>{ const d=String(b[0]);
+    return {t:d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6), o:b[1], h:b[2], l:b[3], c:b[4], v:b[5]}; });
+}
+function smChartOpts(){
+  return {layout:{background:{color:'transparent'}, textColor:smVar('--ink-3'), attributionLogo:false},
+    grid:{vertLines:{color:smVar('--grid')}, horzLines:{color:smVar('--grid')}},
+    rightPriceScale:{borderColor:smVar('--grid')}, timeScale:{borderColor:smVar('--grid')},
+    autoSize:true};
+}
+function renderSmChart(){
+  const el = document.getElementById('schart');
+  if (smChart){ smChart.remove(); smChart=null; }
+  el.innerHTML='';
+  const n = smSel.period==='all' ? smBars.length : +smSel.period;
+  const bars = smBars.slice(-n);
+  if (!bars.length){ el.innerHTML='<div class="note" style="padding:20px">데이터 없음</div>'; return; }
+  const up = smVar('--up'), down = smVar('--down');
+  const chart = smChart = LWC.createChart(el, smChartOpts());
+  chart.addSeries(LWC.CandlestickSeries, {upColor:up, downColor:down, borderUpColor:up,
+    borderDownColor:down, wickUpColor:up, wickDownColor:down}).setData(
+    bars.map(b=>({time:b.t, open:b.o, high:b.h, low:b.l, close:b.c})));
+  SM_OVERLAYS.forEach(o=>{ if(!smSel.ov[o.k]) return;
+    o.f(bars).forEach(({s,c})=> chart.addSeries(LWC.LineSeries,
+      {color:c, lineWidth:1.4, priceLineVisible:false, lastValueVisible:false}).setData(s)); });
+  let pane = 1;
+  if (smSel.pn.vol){
+    chart.addSeries(LWC.HistogramSeries, {priceFormat:{type:'volume'}}, pane++).setData(
+      bars.map(b=>({time:b.t, value:b.v, color:(b.c>=b.o?up:down)+'99'})));
+  }
+  if (smSel.pn.rsi){
+    chart.addSeries(LWC.LineSeries, {color:'#9b59b6', lineWidth:1.5}, pane++).setData(rsi(bars,14));
+  }
+  if (smSel.pn.macd){
+    const m = macd(bars);
+    const pi = pane++;
+    chart.addSeries(LWC.HistogramSeries, {}, pi).setData(m.hist);
+    chart.addSeries(LWC.LineSeries, {color:'#e8a33d', lineWidth:1.4}, pi).setData(m.macd);
+    chart.addSeries(LWC.LineSeries, {color:'#2a78d6', lineWidth:1.2}, pi).setData(m.signal);
+  }
+  if (smSel.pn.stoch){
+    const st = stoch(bars,14,3,3);
+    const pi = pane++;
+    chart.addSeries(LWC.LineSeries, {color:'#0ca30c', lineWidth:1.4}, pi).setData(st.k);
+    chart.addSeries(LWC.LineSeries, {color:'#c05299', lineWidth:1.2}, pi).setData(st.d);
+  }
+  if (smSel.pn.rsline && smBench){
+    const bm = {};
+    (smBench[smMkt]||[]).forEach(r => { const s=String(r[0]);
+      bm[s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6)] = r[1]; });
+    const pts = bars.filter(b=>bm[b.t]).map(b=>({time:b.t, value:b.c/bm[b.t]}));
+    if (pts.length > 2){
+      const base = pts[0].value;
+      chart.addSeries(LWC.LineSeries, {color:'#c05299', lineWidth:1.6}, pane++)
+        .setData(pts.map(pt=>({time:pt.time, value:+(pt.value/base*100).toFixed(2)})));
+    }
+  }
+  if (chart.panes().length > 1){
+    const h = el.clientHeight, extra = chart.panes().length - 1;
+    chart.panes().forEach((pn2,i)=> pn2.setHeight(i===0 ? h*(extra>2?0.45:0.55) : (h*(extra>2?0.55:0.45))/extra));
+  }
+  chart.timeScale().fitContent();
+}
+let smBench = null;   // RS선용 벤치마크 (meta.json에서)
+function renderSmInd(){
+  const host = document.getElementById('sm-ind');
+  const chip = (k, l, on, grp) => '<span class="chip '+(on?'on':'')+'" data-g="'+grp+'" data-k="'+k+'">'+l+'</span>';
+  host.innerHTML = '<span class="grp">기간</span>' +
+    [['63','3개월'],['126','6개월'],['all','전체']].map(([k,l])=>chip(k,l,smSel.period===k,'p')).join('') +
+    '<span class="grp">오버레이</span>' + SM_OVERLAYS.map(o=>chip(o.k,o.l,smSel.ov[o.k],'o')).join('') +
+    '<span class="grp">보조지표</span>' + SM_PANES.map(o=>chip(o.k,o.l,smSel.pn[o.k],'n')).join('');
+  host.querySelectorAll('.chip').forEach(ch=> ch.onclick = ()=>{
+    const g=ch.dataset.g, k=ch.dataset.k;
+    if (g==='p') smSel.period=k;
+    else if (g==='o') smSel.ov[k]=!smSel.ov[k];
+    else smSel.pn[k]=!smSel.pn[k];
+    renderSmInd(); renderSmChart();
+  });
+}
+function renderSmFlow(code){
+  const host = document.getElementById('sm-flow');
+  host.innerHTML = '';
+  staticWsum().then(w => {
+    const rec = w && w.stocks ? w.stocks[code] : null;
+    if (!rec) return;
+    const inc = rec[0], dec = rec[1], tot = inc + dec;
+    if (!tot) return;
+    const fd = d => { const s = String(d); return s.slice(4,6).replace(/^0/,'') + '/' + s.slice(6).replace(/^0/,''); };
+    const bp = inc / tot * 100, a = Math.max(0, bp - 14), b = Math.min(100, bp + 14);
+    const verdict = inc > dec ? '<b class="up">📈 매수 우위</b>'
+                  : dec > inc ? '<b class="down">📉 매도 우위</b>' : '<b>↔️ 중립</b>';
+    host.innerHTML =
+      '<div style="font-size:12px; color:var(--ink-3); margin:0 0 3px">ETF 편입 변화 방향 (' +
+        fd(w.d_from) + '→' + fd(w.d_to) + ') · ' + verdict +
+        ' · <span style="text-decoration:underline; cursor:pointer" onclick="smGotoWeights(\'' + code + '\')">종목별 비중변화 보기 ↗</span></div>' +
+      '<div onclick="smGotoWeights(\'' + code + '\')" title="클릭 → 종목별 비중변화 탭" ' +
+        'style="position:relative; height:20px; border-radius:6px; cursor:pointer; max-width:560px; font-size:11px; color:#fff; ' +
+        'background:linear-gradient(90deg, var(--up) 0%, var(--up) ' + a + '%, var(--down) ' + b + '%, var(--down) 100%)">' +
+        '<span style="position:absolute; left:8px; top:50%; transform:translateY(-50%); text-shadow:0 1px 2px rgba(0,0,0,.35)">▲증가 ' + inc + '개 ETF</span>' +
+        '<span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); text-shadow:0 1px 2px rgba(0,0,0,.35)">' + dec + '개 ETF 감소▼</span></div>';
+  });
+}
+let SM_WSUM = null;
+function staticWsum(){
+  if (!SM_WSUM) SM_WSUM = fetch(IS_SERVER ? '/etf_tracker/wsum.json' : 'wsum.json')
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  return SM_WSUM;
+}
+function smGotoWeights(code){ closeStock(); gotoWeights(code); }
+async function openStock(code){
+  const meta = await krMeta();
+  const s = meta && meta.stocks ? meta.stocks[code] : null;
+  if (!s){ gotoWeights(code); return; }   // KR 데이터 없는 종목(우선주 등)은 비중변화 탭으로
+  smBench = meta.bench || null;
+  smMkt = s.mkt || 'KOSPI';
+  document.getElementById('sm-name').textContent = s.name || code;
+  document.getElementById('sm-code').textContent = code;
+  document.getElementById('sm-sec').innerHTML = (s.sector||'') + ' · ' + (s.industry||'') +
+    ' · <a href="https://finance.naver.com/item/main.naver?code='+code+'" target="_blank" style="color:var(--accent)">네이버 ↗</a>';
+  const M = (lab,val)=>'<div class="m"><div class="lab">'+lab+'</div><div class="val">'+val+'</div></div>';
+  document.getElementById('sm-meta').innerHTML =
+    M('현재가', fmt(s.price)+'원') +
+    M('등락률', '<span class="'+((s.chg||0)>=0?'up':'down')+'">'+fmtPct(s.chg)+'</span>') +
+    M('시가총액', fmtAum(s.cap)) + M('PER', s.per==null?'–':fmt(s.per,1)) +
+    M('PBR', s.pbr==null?'–':fmt(s.pbr,2)) + M('ROE', s.roe==null?'–':fmt(s.roe,1)+'%') +
+    M('배당률', s.dy==null?'–':fmt(s.dy,2)+'%') + M('RSI', s.rsi==null?'–':fmt(s.rsi,1)) +
+    M('RS', (s.rs_pct??'–') + (s.rs_ts?' · 대금 ×'+fmt(s.rs_ts,1):''));
+  document.getElementById('sm-note').textContent = IS_SERVER ? '' :
+    '공개 페이지는 최근 130거래일(약 6개월) 봉 데이터입니다.';
+  document.getElementById('smodal').classList.add('on');
+  renderSmFlow(code);
+  renderSmInd();
+  document.getElementById('schart').innerHTML = '<div class="note" style="padding:20px">일봉 로딩 중...' +
+    (IS_SERVER ? '' : ' (최초 1회 전 종목 일봉 다운로드 — 수 초 소요)') + '</div>';
+  try { smBars = await smFetchBars(code); renderSmChart(); }
+  catch(e){ document.getElementById('schart').innerHTML =
+    '<div class="note" style="padding:20px">일봉 조회 실패: ' + esc(e.message) + '</div>'; }
+}
+function closeStock(){
+  document.getElementById('smodal').classList.remove('on');
+  if (smChart){ smChart.remove(); smChart=null; }
+}
+document.getElementById('smodal').addEventListener('click', ev => { if (ev.target.id==='smodal') closeStock(); });
+document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeStock(); });
+function stockClick(q){
+  // 국내 6자리 종목코드면 KR 스크리너식 종목 팝업, 그 외(해외 ISIN 등)는 비중변화 탭
+  if (/^[0-9A-Z]{6}$/.test(q)) openStock(q); else gotoWeights(q);
+}
+
 /* ── 비중변화 / 구성종목 추이 / 비교 ─────────────── */
 
 function resolveEtf(q) {
@@ -1398,7 +1613,9 @@ function renderTrendTable(){
     const chg = st.last!=null && base!=null ? st.last-base : null;
     const status = st.last==null ? '<span class="down">편출</span>' :
       st.first==null ? '<span class="up">신규 편입</span>' : '';
-    return `<tr style="cursor:default"><td class="l">${esc(st.nm)}</td>` +
+    const clickable = st.code && /^[0-9A-Z]{6}$/.test(st.code);   // 국내 종목 → KR식 종목 팝업
+    return `<tr style="cursor:${clickable?'pointer':'default'}"${
+        clickable ? ` onclick="openStock('${st.code}')"` : ''}><td class="l">${esc(st.nm)}</td>` +
       `<td>${st.last==null?'–':fmt(st.last,2)+(useShares?'주':'%')}</td>` +
       `<td>${base==null?'–':fmt(base,2)+(useShares?'주':'%')}</td>` +
       `<td>${chg==null?'–':`<span class="${pctCls(chg)}">${chg>0?'+':''}${fmt(chg,2)}${useShares?'주':'%p'}</span>`}</td>` +
