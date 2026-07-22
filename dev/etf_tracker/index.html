@@ -271,6 +271,7 @@ footer a { color:var(--ink-3); }
     <div id="schart"></div>
     <p class="note" id="sm-note" style="margin:8px 0 0"></p>
     <div id="sm-cons" style="margin-top:14px"></div>
+    <div id="sm-backlog" style="margin-top:14px"></div>
     <div id="sm-fin" style="margin-top:14px"></div>
   </div>
 </div>
@@ -1417,6 +1418,7 @@ async function openStock(code){
   document.getElementById('smodal').classList.add('on');
   renderSmFlow(code);
   renderSmCons(code, s.price);
+  renderSmBacklog(code);
   renderSmFin(code);
   renderSmInd();
   document.getElementById('schart').innerHTML = '<div class="note" style="padding:20px">일봉 로딩 중...' +
@@ -1544,9 +1546,67 @@ async function renderSmCons(code, price){
   try { renderSmConsBody(await fetchConsensus(code), price, code); }
   catch(e){ host.innerHTML = ''; }
 }
+/* ── 수주잔고 추이 (조선·방산·건설·기계 등 — DART 사업보고서) ── */
+let BL_STATIC = null, smBlChart = null;
+async function fetchBacklog(code){
+  if (IS_SERVER){
+    const r = await fetch('/api/backlog?code='+code);
+    if (!r.ok) throw new Error('수주잔고 조회 실패 ('+r.status+')');
+    return r.json();
+  }
+  if (!BL_STATIC) BL_STATIC = fetch('../kr_screener/backlog.json').then(r=>r.ok?r.json():null).catch(()=>null);
+  const all = await BL_STATIC;
+  return (all && all.bl && all.bl[code]) || null;
+}
+function fmtEok(v){
+  if (v == null) return '–';
+  return v >= 10000 ? (v/10000).toFixed(1)+'조' : Math.round(v).toLocaleString('ko-KR')+'억';
+}
+function renderSmBacklogBody(bl){
+  const host = document.getElementById('sm-backlog');
+  const raw = (bl || []).filter(p => p[1] != null && p[1] > 0);
+  // DART 원문 파싱 이상치 제거 (중앙값의 10%~10배 밖은 오파싱)
+  const vals = raw.map(p => p[1]).sort((a,b) => a-b);
+  const med = vals.length ? vals[Math.floor(vals.length/2)] : 0;
+  const rows = med > 0 ? raw.filter(p => p[1] >= med*0.1 && p[1] <= med*10) : raw;
+  if (rows.length < 2){ host.innerHTML = ''; return; }
+  const first = rows[0][1], last = rows[rows.length-1][1];
+  const pct = first > 0 ? (last/first - 1)*100 : null;
+  const dir = last > first ? 'up' : last < first ? 'down' : 'mut';
+  host.innerHTML =
+    '<h3 style="margin:0 0 6px">수주잔고 추이 <span class="mut" style="font-weight:400; font-size:11.5px">' +
+      rows[0][0] + '~' + rows[rows.length-1][0] +
+      (pct != null ? ' · <span class="' + dir + '">' + (pct>=0?'+':'') + fmt(pct,1) + '%</span>' : '') + '</span></h3>' +
+    '<div id="bl-chart" style="height:180px; border:1px solid var(--grid); border-radius:8px"></div>' +
+    '<div class="mut" style="font-size:11.5px; margin-top:3px">최신 ' + rows[rows.length-1][0] + ' · <b class="' + dir + '">' + fmtEok(last) + '</b> (억원 · DART 사업보고서)</div>';
+  if (smBlChart){ smBlChart.remove(); smBlChart = null; }
+  const el = document.getElementById('bl-chart');
+  const chart = smBlChart = LWC.createChart(el, {
+    layout:{background:{color:'transparent'}, textColor:smVar('--ink-3'), attributionLogo:false},
+    grid:{vertLines:{color:smVar('--grid')}, horzLines:{color:smVar('--grid')}},
+    rightPriceScale:{borderColor:smVar('--grid')}, timeScale:{borderColor:smVar('--grid')},
+    autoSize:true, handleScroll:false, handleScale:false });
+  const up = smVar('--up');
+  const qd = {Q1:'-03-31', Q2:'-06-30', Q3:'-09-30', Q4:'-12-31'};
+  const area = chart.addSeries(LWC.AreaSeries, {lineColor:up, topColor:up+'55', bottomColor:up+'08', lineWidth:2});
+  area.setData(rows.map(p => ({time: p[0].slice(0,4) + (qd[p[0].slice(4)]||'-12-31'), value: p[1]})));
+  chart.timeScale().fitContent();
+  const labelMap = {};
+  rows.forEach(p => { labelMap[p[0].slice(0,4)+(qd[p[0].slice(4)]||'-12-31')] = p[0]; });
+  chart.applyOptions({ timeScale:{ tickMarkFormatter:(t)=>{
+    const key = (t.year+'').padStart(4,'0')+'-'+(t.month+'').padStart(2,'0')+'-'+(t.day+'').padStart(2,'0');
+    return labelMap[key] || ''; }}});
+}
+async function renderSmBacklog(code){
+  const host = document.getElementById('sm-backlog');
+  host.innerHTML = '';
+  try { renderSmBacklogBody(await fetchBacklog(code)); }
+  catch(e){ host.innerHTML = ''; }
+}
 function closeStock(){
   document.getElementById('smodal').classList.remove('on');
   if (smChart){ smChart.remove(); smChart=null; }
+  if (smBlChart){ smBlChart.remove(); smBlChart=null; }
 }
 document.getElementById('smodal').addEventListener('click', ev => { if (ev.target.id==='smodal') closeStock(); });
 document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeStock(); });
