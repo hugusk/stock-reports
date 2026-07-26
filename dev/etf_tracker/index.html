@@ -1563,11 +1563,13 @@ async function fetchBacklog(code){
   if (IS_SERVER){
     const r = await fetch('/api/backlog?code='+code);
     if (!r.ok) throw new Error('수주잔고 조회 실패 ('+r.status+')');
-    return r.json();
+    const d = await r.json();
+    return Array.isArray(d) ? {series:d, fx:null} : d;
   }
   if (!BL_STATIC) BL_STATIC = fetch('../kr_screener/backlog.json').then(r=>r.ok?r.json():null).catch(()=>null);
   const all = await BL_STATIC;
-  return (all && all.bl && all.bl[code]) || null;
+  return {series: (all && all.bl && all.bl[code]) || null,
+          fx: (all && all.fx && all.fx[code]) || null};
 }
 function fmtEok(v){
   if (v == null) return '–';
@@ -1577,7 +1579,7 @@ function fmtQ(s){  // "2026Q1" → "1Q26"
   if (!s || s.length < 6) return s || '';
   return s.slice(5) + 'Q' + s.slice(2,4);
 }
-function renderSmBacklogBody(bl){
+function renderSmBacklogBody(bl, fx){
   const host = document.getElementById('sm-backlog');
   const raw = (bl || []).filter(p => p[1] != null && p[1] > 0);
   // DART 원문 파싱 이상치 제거 (중앙값의 10%~10배 밖은 오파싱)
@@ -1593,7 +1595,8 @@ function renderSmBacklogBody(bl){
       fmtQ(rows[0][0]) + '~' + fmtQ(rows[rows.length-1][0]) +
       (pct != null ? ' · <span class="' + dir + '">' + (pct>=0?'+':'') + fmt(pct,1) + '%</span>' : '') + '</span></h3>' +
     '<div id="bl-chart" style="height:180px; border:1px solid var(--grid); border-radius:8px"></div>' +
-    '<div class="mut" style="font-size:11.5px; margin-top:3px">최신 ' + fmtQ(rows[rows.length-1][0]) + ' · <b class="' + dir + '">' + fmtEok(last) + '</b> (억원 · DART 사업보고서)</div>';
+    '<div class="mut" style="font-size:11.5px; margin-top:3px">최신 ' + fmtQ(rows[rows.length-1][0]) + ' · <b class="' + dir + '">' + fmtEok(last) + '</b> (억원 · DART 사업보고서' +
+    (fx ? ' · ' + fx.currency + ' 원화환산(' + fx.date + ' 환율 ' + Math.round(fx.rate).toLocaleString('ko-KR') + '원)' : '') + ')</div>';
   if (smBlChart){ smBlChart.remove(); smBlChart = null; }
   const el = document.getElementById('bl-chart');
   const chart = smBlChart = LWC.createChart(el, {
@@ -1615,7 +1618,7 @@ function renderSmBacklogBody(bl){
 async function renderSmBacklog(code){
   const host = document.getElementById('sm-backlog');
   host.innerHTML = '';
-  try { renderSmBacklogBody(await fetchBacklog(code)); }
+  try { const d = await fetchBacklog(code); renderSmBacklogBody(d.series, d.fx); }
   catch(e){ host.innerHTML = ''; }
 }
 function closeStock(){
