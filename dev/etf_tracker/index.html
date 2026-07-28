@@ -1551,6 +1551,46 @@ function renderSmConsBody(c, price, code){
   }
   host.innerHTML = html;
   renderTargetCharts(code);
+  renderEpsEstimates(code);
+}
+let EPS_STATIC = null;
+async function fetchEps(code){
+  if (IS_SERVER){
+    const r = await fetch('/api/eps_estimates?code='+code);
+    if (!r.ok) return null;
+    return r.json();
+  }
+  if (!EPS_STATIC) EPS_STATIC = fetch('../kr_screener/eps_estimates.json').then(r=>r.ok?r.json():null).catch(()=>null);
+  const all = await EPS_STATIC;
+  return (all && all.eps) ? (all.eps[code] || null) : null;
+}
+async function renderEpsEstimates(code){
+  let d; try { d = await fetchEps(code); } catch(e){ return; }
+  if (!d || !d.c) return;
+  const c = d.c, hist = d.h || [];
+  const fmtI = v => Math.round(v).toLocaleString('ko-KR');
+  const years = c.years || [];
+  const yl = y => y.replace('/12','').replace('Fwd. 12M','12M선행');
+  let tbl = '<table style="width:100%;font-size:11.5px;border-collapse:collapse;margin-top:4px">';
+  tbl += '<tr><td class="mut"></td>'+years.map(y=>'<td class="mut" style="text-align:right;padding:2px 4px">'+yl(y)+'</td>').join('')+'</tr>';
+  tbl += '<tr><td class="mut">EPS</td>'+years.map(y=>'<td style="text-align:right;font-weight:600;padding:2px 4px">'+(c.eps[y]!=null?fmtI(c.eps[y]):'-')+'</td>').join('')+'</tr>';
+  tbl += '<tr><td class="mut">PER</td>'+years.map(y=>'<td style="text-align:right;padding:2px 4px">'+(c.per[y]!=null?c.per[y]+'배':'-')+'</td>').join('')+'</tr>';
+  tbl += '</table>';
+  const cons = c.consensus || {};
+  const consLine = cons.target ? '<div class="mut" style="font-size:11.5px;margin-top:4px">컨센서스 목표 <b>'+fmtI(cons.target)+'원</b> · 추정기관 '+(cons.n!=null?cons.n:'?')+'곳</div>' : '';
+  const host = document.getElementById('sm-cons');
+  const box = document.createElement('div');
+  box.innerHTML = '<div class="mut" style="font-size:11.5px;margin:14px 0 3px">EPS 컨센서스 추정 (wisereport)</div>'+tbl+consLine+
+    (hist.length>=2 ? '<div class="mut" style="font-size:11.5px;margin:10px 0 3px">EPS 추정 변화 (보라=당해·파랑=12M선행)</div><div id="tc-eps" style="height:150px;border:1px solid var(--grid);border-radius:8px"></div>' : '<div class="mut" style="font-size:11px;margin-top:6px">EPS 추정 변화는 매일 스냅샷을 쌓아 표시됩니다(2일+)</div>');
+  host.appendChild(box);
+  if (hist.length>=2){
+    const ch = LWC.createChart(document.getElementById('tc-eps'), smChartOpts()); tcCharts.push(ch);
+    const fy1 = tcUniqSorted(hist.map(h=>({time:h[0],value:h[1]})).filter(x=>x.value!=null));
+    const fwd = tcUniqSorted(hist.map(h=>({time:h[0],value:h[2]})).filter(x=>x.value!=null));
+    if(fy1.length) ch.addSeries(LWC.LineSeries,{color:'#7c3aed',lineWidth:2}).setData(fy1);
+    if(fwd.length) ch.addSeries(LWC.LineSeries,{color:smVar('--accent')||'#3b82f6',lineWidth:1.5}).setData(fwd);
+    ch.timeScale().fitContent();
+  }
 }
 async function renderSmCons(code, price){
   const host = document.getElementById('sm-cons');
