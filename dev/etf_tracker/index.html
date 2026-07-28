@@ -1550,12 +1550,77 @@ function renderSmConsBody(c, price, code){
     html += '</div>';
   }
   host.innerHTML = html;
+  renderTargetCharts(code);
 }
 async function renderSmCons(code, price){
   const host = document.getElementById('sm-cons');
   host.innerHTML = '<div class="note">컨센서스 로딩 중...</div>';
   try { renderSmConsBody(await fetchConsensus(code), price, code); }
   catch(e){ host.innerHTML = ''; }
+}
+
+/* ── 증권사별 목표주가 시계열 차트 (autoanalyst식 — 최근 6개월 리포트) ── */
+let TR_STATIC = null, tcCharts = [];
+async function fetchTargetHistory(code){
+  if (IS_SERVER){
+    const r = await fetch('/api/target_history?code='+code);
+    if (!r.ok) return null;
+    return r.json();
+  }
+  if (!TR_STATIC) TR_STATIC = fetch('../kr_screener/target_reports.json').then(r=>r.ok?r.json():null).catch(()=>null);
+  const all = await TR_STATIC;
+  return (all && all.rpt) ? {rpt: all.rpt[code] || []} : null;
+}
+function tcDisposeAll(){ tcCharts.forEach(c=>{ try{ c.remove(); }catch(e){} }); tcCharts = []; }
+function tcUniqSorted(pts){
+  pts.sort((a,b)=> a.time<b.time?-1:a.time>b.time?1:0);
+  const m={}; pts.forEach(p=> m[p.time]=p.value);
+  return Object.keys(m).sort().map(t=>({time:t, value:m[t]}));
+}
+async function renderTargetCharts(code){
+  tcDisposeAll();
+  let d; try { d = await fetchTargetHistory(code); } catch(e){ return; }
+  const reps = (d && d.rpt) || [];
+  if (reps.length < 3) return;
+  const host = document.getElementById('sm-cons');
+  const box = document.createElement('div');
+  box.innerHTML =
+    '<div class="mut" style="font-size:11.5px;margin:14px 0 3px">주가 vs 평균 목표주가</div>'+
+    '<div id="tc-price" style="height:170px;border:1px solid var(--grid);border-radius:8px"></div>'+
+    '<div class="mut" style="font-size:11.5px;margin:12px 0 3px">평균 목표주가 변동 (밴드=증권사 최고/최저)</div>'+
+    '<div id="tc-target" style="height:150px;border:1px solid var(--grid);border-radius:8px"></div>'+
+    '<div class="mut" style="font-size:11.5px;margin:12px 0 3px">증권사별 목표주가 (최근 6개월·상위 10곳)</div>'+
+    '<div id="tc-broker" style="height:190px;border:1px solid var(--grid);border-radius:8px"></div>';
+  host.appendChild(box);
+  const byDate = {};
+  reps.forEach(([dt,f,t])=>{ if(t){ (byDate[dt]=byDate[dt]||[]).push(t); } });
+  const dates = Object.keys(byDate).sort();
+  const avg = dates.map(dt=>({time:dt, value:Math.round(byDate[dt].reduce((a,b)=>a+b,0)/byDate[dt].length)}));
+  const hi  = dates.map(dt=>({time:dt, value:Math.max.apply(null,byDate[dt])}));
+  const lo  = dates.map(dt=>({time:dt, value:Math.min.apply(null,byDate[dt])}));
+  const acc = smVar('--accent')||'#3b82f6', mut = smVar('--ink-3');
+  try {
+    const bars = await smFetchBars(code);
+    const close = tcUniqSorted(bars.map(b=>({time:b.t, value:b.c})));
+    const c1 = LWC.createChart(document.getElementById('tc-price'), smChartOpts()); tcCharts.push(c1);
+    c1.addSeries(LWC.LineSeries,{color:mut,lineWidth:1}).setData(close);
+    c1.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(avg);
+    c1.timeScale().fitContent();
+  } catch(e){ const el=document.getElementById('tc-price'); if(el) el.innerHTML='<div class="mut" style="padding:10px;font-size:11px">주가 데이터 없음</div>'; }
+  const c2 = LWC.createChart(document.getElementById('tc-target'), smChartOpts()); tcCharts.push(c2);
+  c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(hi);
+  c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(lo);
+  c2.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(avg);
+  c2.timeScale().fitContent();
+  const byFirm = {};
+  reps.forEach(([dt,f,t])=>{ if(t&&f){ (byFirm[f]=byFirm[f]||[]).push({time:dt,value:t}); } });
+  const c3 = LWC.createChart(document.getElementById('tc-broker'), smChartOpts()); tcCharts.push(c3);
+  const pal = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16'];
+  Object.keys(byFirm).sort((a,b)=>byFirm[b].length-byFirm[a].length).slice(0,10).forEach((f,i)=>{
+    const s = c3.addSeries(LWC.LineSeries,{color:pal[i%pal.length],lineWidth:1,pointMarkersVisible:true});
+    s.setData(tcUniqSorted(byFirm[f]));
+  });
+  c3.timeScale().fitContent();
 }
 /* ── 수주잔고 추이 (조선·방산·건설·기계 등 — DART 사업보고서) ── */
 let BL_STATIC = null, smBlChart = null;
@@ -1625,6 +1690,7 @@ function closeStock(){
   document.getElementById('smodal').classList.remove('on');
   if (smChart){ smChart.remove(); smChart=null; }
   if (smBlChart){ smBlChart.remove(); smBlChart=null; }
+  tcDisposeAll();
 }
 document.getElementById('smodal').addEventListener('click', ev => { if (ev.target.id==='smodal') closeStock(); });
 document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeStock(); });
