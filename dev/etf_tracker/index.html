@@ -1612,7 +1612,7 @@ async function renderTargetCharts(code){
   let gapTxt = '';
   if (lastP && lastC){
     const g = (lastC/lastP - 1)*100;
-    gapTxt = ' <span class="' + (g>=0?'up':'down') + '" style="font-weight:600">현재 ' + fmtI(lastP) +
+    gapTxt = ' <span style="font-weight:700;color:' + (g>=0?'var(--up-text)':'var(--down-text)') + '">현재 ' + fmtI(lastP) +
       ' · 목표 ' + fmtI(lastC) + ' · 괴리율 ' + (g>=0?'+':'') + g.toFixed(1) + '%</span>';
   }
   const host = document.getElementById('sm-cons');
@@ -1632,10 +1632,11 @@ async function renderTargetCharts(code){
     c1.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(cons);
     c1.timeScale().fitContent();
   } else { const el=document.getElementById('tc-price'); if(el) el.innerHTML='<div class="mut" style="padding:10px;font-size:11px">주가 데이터 없음</div>'; }
+  const upc = smVar('--up')||'#d03b3b', dnc = smVar('--down')||'#2a6fd6';
   const c2 = LWC.createChart(document.getElementById('tc-target'), smChartOpts()); tcCharts.push(c2);
-  c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(hi);
-  c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(lo);
-  c2.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(cons);
+  c2.addSeries(LWC.LineSeries,{color:upc,lineWidth:1.5}).setData(hi);
+  c2.addSeries(LWC.LineSeries,{color:dnc,lineWidth:1.5}).setData(lo);
+  c2.addSeries(LWC.LineSeries,{color:'#7c3aed',lineWidth:2.5}).setData(cons);
   c2.timeScale().fitContent();
   const byFirm = {};
   reps.forEach(([dt,f,t])=>{ if(t&&f){ (byFirm[f]=byFirm[f]||[]).push({time:dt,value:t}); } });
