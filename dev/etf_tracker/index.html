@@ -1577,40 +1577,65 @@ function tcUniqSorted(pts){
   const m={}; pts.forEach(p=> m[p.time]=p.value);
   return Object.keys(m).sort().map(t=>({time:t, value:m[t]}));
 }
+function tcForwardFill(reps, axis){
+  const byD = {};
+  reps.forEach(([dt,f,t])=>{ if(t&&f){ (byD[dt]=byD[dt]||[]).push([f,t]); } });
+  const rds = Object.keys(byD).sort();
+  const before = (s,n)=>{ const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
+  const latest = {}; let ri = 0;
+  const cons=[], hi=[], lo=[];
+  axis.forEach(pd=>{
+    while(ri < rds.length && rds[ri] <= pd){ byD[rds[ri]].forEach(([f,t])=> latest[f]={t, d:rds[ri]}); ri++; }
+    const cut = before(pd, 190);
+    const vals = Object.values(latest).filter(x=>x.d >= cut).map(x=>x.t);
+    if(vals.length){
+      cons.push({time:pd, value:Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)});
+      hi.push({time:pd, value:Math.max.apply(null,vals)});
+      lo.push({time:pd, value:Math.min.apply(null,vals)});
+    }
+  });
+  return {cons, hi, lo};
+}
 async function renderTargetCharts(code){
   tcDisposeAll();
   let d; try { d = await fetchTargetHistory(code); } catch(e){ return; }
   const reps = (d && d.rpt) || [];
   if (reps.length < 3) return;
+  let priceClose = [];
+  try { const bars = await smFetchBars(code); priceClose = tcUniqSorted(bars.map(b=>({time:b.t, value:b.c}))); } catch(e){}
+  const rptDates = Array.from(new Set(reps.map(r=>r[0]))).sort();
+  const axis = priceClose.length ? priceClose.map(p=>p.time) : rptDates;
+  const {cons, hi, lo} = tcForwardFill(reps, axis);
+  const fmtI = v => Math.round(v).toLocaleString('ko-KR');
+  const lastP = priceClose.length ? priceClose[priceClose.length-1].value : null;
+  const lastC = cons.length ? cons[cons.length-1].value : null;
+  let gapTxt = '';
+  if (lastP && lastC){
+    const g = (lastC/lastP - 1)*100;
+    gapTxt = ' <span class="' + (g>=0?'up':'down') + '" style="font-weight:600">현재 ' + fmtI(lastP) +
+      ' · 목표 ' + fmtI(lastC) + ' · 괴리율 ' + (g>=0?'+':'') + g.toFixed(1) + '%</span>';
+  }
   const host = document.getElementById('sm-cons');
   const box = document.createElement('div');
   box.innerHTML =
-    '<div class="mut" style="font-size:11.5px;margin:14px 0 3px">주가 vs 평균 목표주가</div>'+
+    '<div class="mut" style="font-size:11.5px;margin:14px 0 3px">주가 vs 평균 목표주가' + gapTxt + '</div>'+
     '<div id="tc-price" style="height:170px;border:1px solid var(--grid);border-radius:8px"></div>'+
     '<div class="mut" style="font-size:11.5px;margin:12px 0 3px">평균 목표주가 변동 (밴드=증권사 최고/최저)</div>'+
     '<div id="tc-target" style="height:150px;border:1px solid var(--grid);border-radius:8px"></div>'+
     '<div class="mut" style="font-size:11.5px;margin:12px 0 3px">증권사별 목표주가 (최근 6개월·상위 10곳)</div>'+
     '<div id="tc-broker" style="height:190px;border:1px solid var(--grid);border-radius:8px"></div>';
   host.appendChild(box);
-  const byDate = {};
-  reps.forEach(([dt,f,t])=>{ if(t){ (byDate[dt]=byDate[dt]||[]).push(t); } });
-  const dates = Object.keys(byDate).sort();
-  const avg = dates.map(dt=>({time:dt, value:Math.round(byDate[dt].reduce((a,b)=>a+b,0)/byDate[dt].length)}));
-  const hi  = dates.map(dt=>({time:dt, value:Math.max.apply(null,byDate[dt])}));
-  const lo  = dates.map(dt=>({time:dt, value:Math.min.apply(null,byDate[dt])}));
   const acc = smVar('--accent')||'#3b82f6', mut = smVar('--ink-3');
-  try {
-    const bars = await smFetchBars(code);
-    const close = tcUniqSorted(bars.map(b=>({time:b.t, value:b.c})));
+  if (priceClose.length){
     const c1 = LWC.createChart(document.getElementById('tc-price'), smChartOpts()); tcCharts.push(c1);
-    c1.addSeries(LWC.LineSeries,{color:mut,lineWidth:1}).setData(close);
-    c1.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(avg);
+    c1.addSeries(LWC.LineSeries,{color:mut,lineWidth:1}).setData(priceClose);
+    c1.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(cons);
     c1.timeScale().fitContent();
-  } catch(e){ const el=document.getElementById('tc-price'); if(el) el.innerHTML='<div class="mut" style="padding:10px;font-size:11px">주가 데이터 없음</div>'; }
+  } else { const el=document.getElementById('tc-price'); if(el) el.innerHTML='<div class="mut" style="padding:10px;font-size:11px">주가 데이터 없음</div>'; }
   const c2 = LWC.createChart(document.getElementById('tc-target'), smChartOpts()); tcCharts.push(c2);
   c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(hi);
   c2.addSeries(LWC.LineSeries,{color:mut+'55',lineWidth:1,lineStyle:2}).setData(lo);
-  c2.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(avg);
+  c2.addSeries(LWC.LineSeries,{color:acc,lineWidth:2}).setData(cons);
   c2.timeScale().fitContent();
   const byFirm = {};
   reps.forEach(([dt,f,t])=>{ if(t&&f){ (byFirm[f]=byFirm[f]||[]).push({time:dt,value:t}); } });
