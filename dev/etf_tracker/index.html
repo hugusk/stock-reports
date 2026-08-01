@@ -359,7 +359,11 @@ $('#theme-btn').onclick = () => {
 /* ── 탭 ──────────────────────────────────────── */
 function loadKrFrame() {
   const fr = $('#kr-frame');
-  if (fr && !fr.src) fr.src = IS_SERVER ? '/kr' : '../kr_screener/';
+  if (fr && !fr.src) {
+    // embed=1 → KR 페이지가 자체 헤더를 숨겨 이중 헤더 방지. 현재 테마도 전달해 룩앤필 통일
+    const th = document.documentElement.getAttribute('data-theme') || 'dark';
+    fr.src = (IS_SERVER ? '/kr' : '../kr_screener/') + '?embed=1&theme=' + th;
+  }
 }
 function loadIndFrame() {
   const fr = $('#ind-frame');
