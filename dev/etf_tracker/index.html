@@ -107,6 +107,7 @@ table.tbl tbody tr:hover { background:var(--hover-wash); }
   padding:3px 12px; font-size:12.5px; cursor:pointer; color:var(--ink-2); user-select:none; }
 .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
 .chip .x { margin-left:6px; opacity:.7; }
+.hsep { width:1px; height:14px; background:var(--border); margin:0 3px; align-self:center; display:inline-block; }
 
 .note { color:var(--ink-3); font-size:12.5px; margin:8px 0; }
 .warn { background:var(--chip); border:1px solid var(--border); border-radius:10px;
@@ -359,7 +360,11 @@ $('#theme-btn').onclick = () => {
 /* ── 탭 ──────────────────────────────────────── */
 function loadKrFrame() {
   const fr = $('#kr-frame');
-  if (fr && !fr.src) fr.src = IS_SERVER ? '/kr' : '../kr_screener/';
+  if (fr && !fr.src) {
+    // embed=1 → KR 페이지가 자체 헤더를 숨겨 이중 헤더 방지. 현재 테마도 전달해 룩앤필 통일
+    const th = document.documentElement.getAttribute('data-theme') || 'dark';
+    fr.src = (IS_SERVER ? '/kr' : '../kr_screener/') + '?embed=1&theme=' + th;
+  }
 }
 function loadIndFrame() {
   const fr = $('#ind-frame');
@@ -578,19 +583,18 @@ function flowStatsCard() {
 function flowCard(title, side) {
   const f = DATA.market_flows;
   const div = document.createElement('div'); div.className='card';
-  let seg = 'all';
+  let seg = 'all', mode = 'shares';
   div.innerHTML = `<h3>${title}
     <span class="chips" style="margin-left:auto">
       <span class="chip on" data-s="all">전체</span>
       <span class="chip" data-s="KOSPI">코스피</span>
       <span class="chip" data-s="KOSDAQ">코스닥</span>
       <span class="chip" data-s="FO">해외</span>
-    </span>
-    <select>
-      <option value="shares">주식수 기준</option><option value="amt">금액 기준</option>
-    </select></h3><div class="rank"></div>`;
+      <span class="hsep"></span>
+      <span class="chip on" data-m="shares">주식수</span>
+      <span class="chip" data-m="amt">금액</span>
+    </span></h3><div class="rank"></div>`;
   const render = () => {
-    const mode = div.querySelector('select').value;
     const rows = (f[`top_${side}_${mode}`] || [])
       .filter(r => seg==='all' || (r.mkt || (/^[0-9A-Z]{6}$/.test(r.code||'') ? 'KOSPI' : 'FO')) === seg);
     const key = mode === 'shares' ? 'sh' : 'amt';
@@ -608,10 +612,14 @@ function flowCard(title, side) {
           : (r.amt>0?'+':'−')+fmtAum(Math.abs(r.amt))}</span></div>`).join('')
       || '<div class="note">해당 없음</div>';
   };
-  div.querySelector('select').onchange = render;
-  div.querySelectorAll('.chip').forEach(ch => ch.onclick = () => {
+  div.querySelectorAll('.chip[data-s]').forEach(ch => ch.onclick = () => {
     seg = ch.dataset.s;
-    div.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x===ch));
+    div.querySelectorAll('.chip[data-s]').forEach(x => x.classList.toggle('on', x===ch));
+    render();
+  });
+  div.querySelectorAll('.chip[data-m]').forEach(ch => ch.onclick = () => {
+    mode = ch.dataset.m;
+    div.querySelectorAll('.chip[data-m]').forEach(x => x.classList.toggle('on', x===ch));
     render();
   });
   render();
