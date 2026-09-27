@@ -1368,6 +1368,46 @@ function bindRows(){
 // **칸은 종료일로 정한다**(prov_import.period_series와 같은 규칙) — 20일 값만 있으면 '1~20일'
 // 한 칸이지 1~10일로 넣지 않는다.
 let USR = null, usrSel = null, usrQ = '', usrSort = {key:'yoy', dir:-1}, usrMetric = 'amt', usrChart = null;
+let usrGrp = 'ALL', usrHot = false, usrAuto = false;
+// 업종 — 시트의 첫 HS코드 4자리 → 관심목록 그룹, 없으면 같은 류(2자리)에서 가장 흔한 그룹,
+// HS가 없는 시트(예: '변압기 + 미국')는 이름 키워드, 그래도 없으면 '기타'
+const USR_KW = [['반도체','반도체'],['디램','반도체'],['낸드','반도체'],['HBM','반도체'],['웨이퍼','반도체'],
+  ['변압기','전력·전기'],['전선','전력·전기'],['전기','전력·전기'],['배전','전력·전기'],
+  ['자동차','자동차'],['카본캐니스터','자동차'],['화장품','소비재'],['메로나','소비재'],['혈액','바이오'],
+  ['2차전지','이차전지'],['리튬','이차전지'],['양극재','이차전지'],['조선','조선'],['선박','조선']];
+function usrGroup(s){
+  if(s._g) return s._g;
+  const items = HS.items||[];
+  const c = (s.hs||[])[0]||'';
+  let g = null;
+  if(c){
+    const it = items.find(x=>x.hs===c.slice(0,4));
+    if(it) g = it.group;
+    else {
+      const cnt = {};
+      items.filter(x=>x.hs.slice(0,2)===c.slice(0,2)).forEach(x=>cnt[x.group]=(cnt[x.group]||0)+1);
+      g = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0] || null;
+    }
+  }
+  if(!g){ const k = USR_KW.find(([w])=>(s.id+' '+(s.cond||'')).includes(w)); g = k ? k[1] : '기타'; }
+  return s._g = g;
+}
+// '움직인 것' — 관심목록 급등/급락과 같은 기준: 3개월 추세 ±20% 또는 YoY ±30%.
+// 단월 MoM은 납품이 몰리는 시트에서 출렁여 넣지 않는다(넣으면 497개 중 321개가 걸렸다).
+// 최근 3개월 합 $10M 미만은 잡음이라 제외(관심목록은 $20M — 기업·지역 단위 시트라 낮춤)
+function usrMoved(s){
+  const t = usrStat(s), su = HS.surge||{};
+  if(!t.exp3 || t.exp3 < 1e7) return false;
+  return (t.mom3!=null && (t.mom3 >= (su.mom3||20) || t.mom3 <= (su.slump_mom3||-20)))
+      || (t.yoy!=null && (t.yoy >= (su.yoy||30) || t.yoy <= (su.slump_yoy||-30)));
+}
+function usrGroups(){
+  const order = (HS.groups||[]).slice();
+  const have = new Set((USR_DATA.series||[]).map(usrGroup));
+  const out = order.filter(g=>have.has(g));
+  for(const g of have) if(!out.includes(g)) out.push(g);   // '기타' 등은 뒤로
+  return out;
+}
 function usrLoad(){
   if(!USR) USR = fetch('user_series.json').then(r=>r.ok?r.json():null).catch(()=>null);
   return USR;
@@ -1385,16 +1425,24 @@ function usrStat(s){
   const ch = (a,b)=>(a!=null&&b) ? (a/b-1)*100 : null;
   const pv = yms.filter(y=>m[y].prov).pop();
   const pd = pv ? Math.max(...[10,20].filter(d=>m[pv]['u'+d]!=null)) : null;
-  return s._st = {m, yms, last, exp:last?u(last):null,
+  // 3개월 추세 — 최근 3개월 합 ÷ 직전 3개월 합 (관심목록 급등 판정과 같은 지표), exp3 = 최근 3개월 합
+  const sum3 = (end, back) => { let a = 0; for(let i=0;i<3;i++){ const v = u(tdShiftYm(end, back+i)); if(v==null) return null; a += v; } return a; };
+  const e3 = last ? sum3(last,0) : null, p3 = last ? sum3(last,3) : null;
+  return s._st = {m, yms, last, exp:last?u(last):null, exp3:e3, mom3:(e3!=null&&p3)?(e3/p3-1)*100:null,
     mom: last?ch(u(last), u(tdShiftYm(last,1))):null, yoy: last?ch(u(last), u(tdShiftYm(last,12))):null,
     unit: last?unit(last):null, uyoy: last?ch(unit(last), unit(tdShiftYm(last,12))):null,
     pv, pd, pval: pv ? m[pv]['u'+pd] : null};
 }
 function usrList(){
   const q = usrQ.trim().toLowerCase();
-  let rows = (USR_DATA.series||[]).filter(s=>!q || (s.id+' '+s.co+' '+s.hs.join(' ')+' '+s.cond).toLowerCase().includes(q));
+  let rows = (USR_DATA.series||[]).filter(s=>
+    (!q || (s.id+' '+s.co+' '+s.hs.join(' ')+' '+s.cond).toLowerCase().includes(q)) &&
+    (usrGrp==='ALL' || usrGroup(s)===usrGrp) && (!usrHot || usrMoved(s)) && (!usrAuto || s.auto));
   const v = s=>{ const t=usrStat(s); return usrSort.key==='name' ? s.id : t[usrSort.key]; };
-  rows.sort((a,b)=>{ const x=v(a), y=v(b);
+  const gi = usrGroups();
+  rows.sort((a,b)=>{
+    if(usrGrp==='ALL'){ const d = gi.indexOf(usrGroup(a)) - gi.indexOf(usrGroup(b)); if(d) return d; }  // 업종끼리 모아서
+    const x=v(a), y=v(b);
     if(x==null && y==null) return 0; if(x==null) return 1; if(y==null) return -1;
     if(x<y) return -usrSort.dir; if(x>y) return usrSort.dir; return 0; });
   return rows;
@@ -1406,11 +1454,15 @@ function usrTh(k, label, cls){
 }
 function usrRowsHtml(){
   const rows = usrList();
-  if(!rows.length) return '<tr><td colspan="8" class="mut">검색 결과가 없습니다.</td></tr>';
-  return rows.map(s=>{ const t = usrStat(s);
-    return '<tr class="hrow'+(s.id===usrSel?' sel':'')+'" data-usr="'+s.id.replace(/"/g,'&quot;')+'" style="cursor:pointer">'+
+  if(!rows.length) return '<tr><td colspan="8" class="mut">조건에 맞는 시계열이 없습니다.</td></tr>';
+  let prevG = null;
+  return rows.map(s=>{ const t = usrStat(s), g = usrGroup(s);
+    const head = (usrGrp==='ALL' && g!==prevG) ? '<tr class="grp-h"><td colspan="8">'+g+'</td></tr>' : '';
+    prevG = g;
+    return head+'<tr class="hrow'+(s.id===usrSel?' sel':'')+'" data-usr="'+s.id.replace(/"/g,'&quot;')+'" style="cursor:pointer">'+
       '<td class="tl">'+s.id+(s.flow==='imp'?' <span class="mut">(수입)</span>':'')+
         (s.auto?' <span class="dtag conf" title="'+s.auto+' — 월 값은 관세청에서 자동 갱신">자동</span>':'')+
+        (usrMoved(s)?' 🔥':'')+
         '<div class="mut" style="font-size:10px">'+(s.co||'').slice(0,30)+'</div></td>'+
       '<td class="mut tl" style="font-size:11px">'+(s.hs.slice(0,2).join(' ')||'–')+'</td>'+
       '<td>'+fmtUsd(t.exp)+'<div class="mut" style="font-size:10px">'+(t.last||'')+'</div></td>'+
@@ -1419,6 +1471,17 @@ function usrRowsHtml(){
       '<td>'+fmtPct(t.uyoy)+'</td>'+
       '<td>'+(t.pv ? fmtUsd(t.pval)+'<div style="font-size:10px">'+t.pv.slice(4)+'월 1~'+t.pd+'일 '+
           '<span class="dtag prov">잠정</span></div>' : '<span class="mut">–</span>')+'</td></tr>'; }).join('');
+}
+function usrChipsHtml(){
+  const all = USR_DATA.series||[];
+  const cnt = g => all.filter(s=>usrGroup(s)===g).length;
+  return '<div style="margin-bottom:10px">'+
+    '<span class="gchip'+(usrGrp==='ALL'?' on':'')+'" data-ugrp="ALL">전체</span>'+
+    usrGroups().map(g=>'<span class="gchip'+(usrGrp===g?' on':'')+'" data-ugrp="'+g+'">'+g+
+      ' <span class="mut">'+cnt(g)+'</span></span>').join('')+
+    '<span style="display:inline-block;width:10px"></span>'+
+    '<span class="gchip'+(usrHot?' on':'')+'" data-uhot="1" title="3개월 추세 ±20% 또는 YoY ±30% (최근 3개월 $10M 이상)">🔥 움직인 것만 <span class="mut">'+all.filter(usrMoved).length+'</span></span>'+
+    '<span class="gchip'+(usrAuto?' on':'')+'" data-uauto="1" title="관세청과 값이 일치해 월 값이 자동으로 이어지는 시계열">자동만 <span class="mut">'+all.filter(x=>x.auto).length+'</span></span></div>';
 }
 async function usrRender(){
   const host = document.getElementById('usr-sec');
@@ -1437,6 +1500,7 @@ async function usrRender(){
     '<input id="usr-q" type="search" placeholder="품목·기업·HS코드 검색" value="'+usrQ.replace(/"/g,'&quot;')+
     '" style="width:100%;max-width:360px;margin:4px 0 10px;padding:7px 10px;border-radius:8px;'+
     'border:1px solid var(--grid);background:transparent;color:inherit;font:inherit">'+
+    usrChipsHtml()+
     '<div class="tbl-wrap" style="max-height:460px;overflow:auto"><table><thead><tr>'+
       usrTh('name','품목 / 기업','tl')+'<th class="tl">HS</th>'+usrTh('exp','최근월 수출')+
       usrTh('mom','MoM')+usrTh('yoy','YoY')+usrTh('unit','단가 $/kg')+usrTh('uyoy','단가 YoY')+
@@ -1448,7 +1512,8 @@ async function usrRender(){
       '<span class="cchip'+(usrMetric==='wgt'?' on':'')+'" data-umet="wgt">중량 t</span></div>'+
     '<div class="chart" id="chart-usr"></div><div id="usr-leg"></div></div>';
   usrBind();
-  usrDraw(usrSel || (usrList()[0]||{}).id);
+  const vis = usrList();                        // 필터로 가려진 품목이 선택돼 있으면 첫 행으로
+  usrDraw(vis.some(x=>x.id===usrSel) ? usrSel : (vis[0]||{}).id);
 }
 function usrBind(){
   const q = document.getElementById('usr-q');
@@ -1456,6 +1521,12 @@ function usrBind(){
   document.querySelectorAll('#usr-sec [data-usort]').forEach(th=>th.addEventListener('click',()=>{
     const k=th.dataset.usort; if(usrSort.key===k) usrSort.dir=-usrSort.dir; else usrSort={key:k,dir:k==='name'?1:-1};
     usrRender(); }));
+  document.querySelectorAll('#usr-sec [data-ugrp]').forEach(c=>c.addEventListener('click',()=>{
+    usrGrp = c.dataset.ugrp; usrRender(); }));
+  document.querySelectorAll('#usr-sec [data-uhot]').forEach(c=>c.addEventListener('click',()=>{
+    usrHot = !usrHot; usrRender(); }));
+  document.querySelectorAll('#usr-sec [data-uauto]').forEach(c=>c.addEventListener('click',()=>{
+    usrAuto = !usrAuto; usrRender(); }));
   document.querySelectorAll('#usr-sec [data-umet]').forEach(c=>c.addEventListener('click',()=>{
     usrMetric=c.dataset.umet;
     document.querySelectorAll('#usr-sec [data-umet]').forEach(x=>x.classList.toggle('on',x.dataset.umet===usrMetric));
