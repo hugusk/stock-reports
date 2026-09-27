@@ -423,15 +423,21 @@ function fxRowsHtml(){
   }
   return h;
 }
+// 세부품목 전체 — it.subs는 차트용 시계열이 붙은 상위 6개뿐(_SUB_TOP, JSON 크기 때문)이라
+// 표에는 요약값만 있는 all_subs에서 그 품목 하위 전체를 쓴다(8542는 20종인데 6종만 보였다)
+function allSubsOf(hs){
+  return (HS.all_subs||[]).filter(x=>x.hs===hs && x.export3)
+    .sort((a,b)=>(b.export3||0)-(a.export3||0));
+}
 function fxSubsHtml(it){
-  const subs = it.subs||[];
+  const subs = allSubsOf(it.hs);
   if(!subs.length) return '';
   let h = '<div class="cat-h">세부품목 — '+it.hs+' 하위 '+subs.length+'종 (최근 3개월 수출 순)</div>'+
     '<div class="tbl-wrap"><table><thead><tr><th>세부 HS</th><th class="tl">품목명</th>'+
     '<th>수출 3개월</th><th>MoM</th><th>3개월 추세</th><th>YoY</th></tr></thead><tbody>';
   for(const sb of subs){
     h += '<tr><td class="mut">'+sb.code+'</td><td class="tl">'+(sb.name||'')+'</td>'+
-      '<td>'+fmtUsd(sb.export3)+'</td><td>'+fmtPct(subMom(sb.code))+'</td>'+
+      '<td>'+fmtUsd(sb.export3)+'</td><td>'+fmtPct(sb.mom)+'</td>'+
       '<td>'+fmtPct(sb.mom3)+'</td><td>'+fmtPct(sb.yoy)+'</td></tr>';
   }
   return h+'</tbody></table></div>';
@@ -513,7 +519,7 @@ function hsTh(key, label, cls){
 function hsSortVal(it, key){
   if(key==='label') return (it.label||'').toLowerCase();
   if(key==='group') return it.group||'';
-  if(key==='subs')  return (it.subs||[]).length;
+  if(key==='subs')  return allSubsOf(it.hs).length;
   const v = it[key];
   return (v==null||isNaN(v)) ? -Infinity : v;
 }
@@ -542,12 +548,12 @@ function hsRowsHtml(){
       '<td class="mut">'+(it.group||'')+'</td>'+
       '<td>'+fmtUsd(it.export)+'</td>'+
       '<td>'+fmtPct(it.mom)+'</td><td>'+fmtPct(it.yoy)+'</td><td>'+fmtPct(it.mom3)+'</td>'+
-      '<td class="mut">'+((it.subs||[]).length||'–')+'</td></tr>';
+      '<td class="mut">'+(allSubsOf(it.hs).length||'–')+'</td></tr>';
   }
   return h;
 }
 function hsSubsHtml(it){
-  const subs = it.subs||[];
+  const subs = allSubsOf(it.hs);
   if(!subs.length) return '';
   const pm = provByCode();
   const any = subs.some(s=>pm[s.code]);
