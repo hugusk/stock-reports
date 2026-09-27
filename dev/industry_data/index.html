@@ -298,7 +298,7 @@ function hsSectionHtml(){
     hsTh('label','품목','tl')+hsTh('group','그룹')+
     hsTh('export','최신월 수출')+hsTh('mom','MoM')+hsTh('yoy','YoY')+
     hsTh('mom3','3개월 추세')+hsTh('subs','세부')+
-    '<th class="tl">연결 종목</th></tr></thead>'+
+    '</tr></thead>'+
     '<tbody id="hs-tbody">'+hsRowsHtml()+'</tbody></table></div></div>';
 
   // 선택 품목 차트
@@ -396,7 +396,7 @@ function fxSecHtml(){
     '<span class="gchip'+(fxHot?' on':'')+'" data-fxhot="1">🔥 움직인 것만</span></div>';
   h += '<div class="tbl-wrap"><table><thead><tr><th>HS</th><th class="tl">품목</th>'+
     '<th>수출 3개월</th><th>MoM</th><th>3개월 추세</th><th>YoY</th><th>수입 YoY</th>'+
-    '<th class="tl">연결 종목</th></tr></thead>'+
+    '</tr></thead>'+
     '<tbody id="fx-tbody">'+fxRowsHtml()+'</tbody></table></div></div>';
 
   h += '<div class="card"><h2 id="chart-title-fx">월별 수출입 추이</h2>'+
@@ -407,21 +407,19 @@ function fxSecHtml(){
 }
 function fxRowsHtml(){
   const rows = fxVisible();
-  if(!rows.length) return '<tr><td colspan="8" class="mut">해당 조건의 품목이 없습니다.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="7" class="mut">해당 조건의 품목이 없습니다.</td></tr>';
   let h = '', lastG = null;
   for(const it of rows){
     if(fxGroup==='ALL' && it.group!==lastG){
       lastG = it.group;
-      h += '<tr class="grp-h"><td colspan="8">'+it.group+'</td></tr>';
+      h += '<tr class="grp-h"><td colspan="7">'+it.group+'</td></tr>';
     }
-    const names = (it.tickers||[]).map(t=>t.name).join(', ') || '–';
     h += '<tr class="hrow'+(it.hs===fxSel?' sel':'')+'" data-fxhs="'+it.hs+'" style="cursor:pointer">'+
       '<td class="mut">'+it.hs+'</td>'+
       '<td class="tl">'+(it.label||'')+hsBadge(it.flag)+'</td>'+
       '<td>'+fmtUsd(it.export3)+'</td>'+
       '<td>'+fmtPct(it.mom)+'</td>'+
-      '<td>'+fmtPct(it.mom3)+'</td><td>'+fmtPct(it.yoy)+'</td><td>'+fmtPct(it.imp_yoy)+'</td>'+
-      '<td class="mut tl">'+names+'</td></tr>';
+      '<td>'+fmtPct(it.mom3)+'</td><td>'+fmtPct(it.yoy)+'</td><td>'+fmtPct(it.imp_yoy)+'</td></tr>';
   }
   return h;
 }
@@ -451,8 +449,7 @@ function drawFxChart(hs){
   const t=document.getElementById('chart-title-fx'), cap=document.getElementById('chart-cap-fx');
   if(t) t.innerHTML = '월별 수출입 추이 — '+it.hs+' '+(it.label||'')+hsBadge(it.flag);
   if(cap) cap.textContent = 'USD · '+it.series.length+'개월 ('+it.series[0][0]+'~'+
-    it.series[it.series.length-1][0]+') · 연결 종목 '+
-    ((it.tickers||[]).map(x=>x.name).join(', ')||'–');
+    it.series[it.series.length-1][0]+')';
   const sub=document.getElementById('fx-subs'); if(sub) sub.innerHTML = fxSubsHtml(it);
   const el=document.getElementById('chart-fx'); if(!el) return;
   if(charts.fx){ charts.fx.remove(); charts.fx=null; }
@@ -532,22 +529,20 @@ function hsRowsHtml(){
     const x=hsSortVal(a,hsSort.key), y=hsSortVal(b,hsSort.key);
     if(x<y) return -hsSort.dir; if(x>y) return hsSort.dir; return 0;
   });
-  if(!rows.length) return '<tr><td colspan="8" class="mut">해당 조건의 품목이 없습니다.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="7" class="mut">해당 조건의 품목이 없습니다.</td></tr>';
   let h = '', lastG = null;
   for(const it of rows){
     if(byGroup && it.group!==lastG){
       lastG = it.group;
-      h += '<tr class="grp-h"><td colspan="8">'+it.group+'</td></tr>';
+      h += '<tr class="grp-h"><td colspan="7">'+it.group+'</td></tr>';
     }
-    const names = (it.tickers||[]).map(t=>t.name).join(', ') || '–';
     h += '<tr class="hrow'+(it.hs===hsSel?' sel':'')+'" data-hs="'+it.hs+'" style="cursor:pointer">'+
       '<td class="tl">'+(it.label||'').slice(0,26)+hsBadge(it.flag)+
         '<div class="mut" style="font-size:10px">'+it.hs+'</div></td>'+
       '<td class="mut">'+(it.group||'')+'</td>'+
       '<td>'+fmtUsd(it.export)+'</td>'+
       '<td>'+fmtPct(it.mom)+'</td><td>'+fmtPct(it.yoy)+'</td><td>'+fmtPct(it.mom3)+'</td>'+
-      '<td class="mut">'+((it.subs||[]).length||'–')+'</td>'+
-      '<td class="mut tl">'+names+'</td></tr>';
+      '<td class="mut">'+((it.subs||[]).length||'–')+'</td></tr>';
   }
   return h;
 }
@@ -576,8 +571,7 @@ function drawHsChart(hs){
   const t=document.getElementById('chart-title-hs'), cap=document.getElementById('chart-cap-hs');
   if(t) t.innerHTML = '수출입 추이 — '+it.hs+' '+(it.label||'')+hsBadge(it.flag);
   if(cap) cap.textContent = 'USD · '+it.series.length+'개월 ('+it.series[0][0]+'~'+
-    it.series[it.series.length-1][0]+') · 연결 종목 '+
-    ((it.tickers||[]).map(x=>x.name).join(', ')||'–');
+    it.series[it.series.length-1][0]+')';
   const sub=document.getElementById('hs-subs'); if(sub) sub.innerHTML = hsSubsHtml(it);
   const el=document.getElementById('chart-hs'); if(!el) return;
   if(charts.hs){ charts.hs.remove(); charts.hs=null; }
