@@ -997,6 +997,17 @@ function itmUnitLines(){
 // 1차(수출입 HS)에서 품목을 누르면 itmParent가 채워져 그 품목의 세부만 남는다.
 const SUBS = (DATA.hs||{}).all_subs || [];
 let subQ = '', subSort = {key:'export', dir:-1}, subSel = null, itmParent = null;
+// 이번 달 잠정(bandtrass 10·20일, 전국 검증분) — 확정 최신월(HS.month)보다 뒤 달의 마지막 누적 구간
+function subProv(code){
+  const L = (HS10.exp||{})[code]; if(!L) return null;
+  const last = (HS.month||'').replace('-','');
+  let best = null;
+  for(const ym in L){
+    if(ym <= last) continue;
+    for(const d of ['20','10']) if(L[ym][d]){ if(!best || ym>best.ym || (ym===best.ym && +d>best.d)) best = {ym, d:+d, usd:L[ym][d][0], kg:L[ym][d][1]}; break; }
+  }
+  return best;
+}
 
 function subTh(key, label, cls){
   const on = subSort.key===key;
@@ -1016,16 +1027,25 @@ function subVisible(){
   rows.sort((a,b)=>{
     const f = o => k==='name' ? (o.name||'').toLowerCase()
                : k==='group' ? (o.group||'')
+               : k==='prov' ? ((subProv(o.code)||{}).usd ?? -Infinity)
                : (o[k]==null||isNaN(o[k]) ? -Infinity : o[k]);
     const x=f(a), y=f(b);
     if(x<y) return -subSort.dir; if(x>y) return subSort.dir; return 0;
   });
   return rows;
 }
+// 캡션용 — 이번 달 잠정이 들어온 세부품목 수
+function provCapHtml(){
+  let n = 0, p0 = null;
+  for(const r of SUBS){ const p = subProv(r.code); if(p){ n++; if(!p0 || p.ym>p0.ym || (p.ym===p0.ym && p.d>p0.d)) p0 = p; } }
+  if(!n) return '';
+  return ' · 이번 달 '+(+p0.ym.slice(4))+'월 1~'+p0.d+'일 <span class="dtag prov">● 잠정</span> '+n+'개 품목'+
+    ' <span class="mut">(bandtrass, 표의 이번 달 잠정 열)</span>';
+}
 function itmSecHtml(){
   const latest = HS.month||'';
   let h = '<div class="card"><h2>세부품목 '+SUBS.length+'개 — HS 10자리</h2>'+
-    '<div class="cap">확정 '+latest+dTag(latest)+
+    '<div class="cap">월별 '+latest+dTag(latest)+provCapHtml()+
     ' · 디램·복합구조칩·모노리식·MCOs·플래시메모리를 한 화면에서 비교 · '+
     '<span class="mut">열 제목 정렬 · 행 클릭 시 아래 차트 전환</span></div>';
   h += '<div style="margin-bottom:8px">'+
@@ -1042,7 +1062,7 @@ function itmSecHtml(){
   const rows = subVisible();
   h += '<div class="tbl-wrap" style="max-height:520px;overflow:auto"><table><thead><tr>'+
     subTh('name','품목명','tl')+subTh('group','그룹')+
-    subTh('export','최신월')+subTh('mom','MoM')+subTh('yoy','YoY')+subTh('mom3','3개월')+
+    subTh('export','최신월')+subTh('prov','이번 달 잠정')+subTh('mom','MoM')+subTh('yoy','YoY')+subTh('mom3','3개월')+
     subTh('wgt','중량')+subTh('unit','단가')+subTh('unit_mom','단가 MoM')+
     '</tr></thead><tbody id="sub-tbody">'+subRowsHtml(rows)+'</tbody></table></div>';
   h += '<div class="cap" style="margin-top:6px">'+rows.length+'개 표시</div></div>';
@@ -1056,21 +1076,27 @@ function itmSecHtml(){
     '<div class="chart" id="chart-itm"></div><div id="itm-leg"></div></div>';
   return h;
 }
+function provSubCell(code){
+  const p = subProv(code);
+  if(!p) return '<td class="mut">–</td>';
+  return '<td>'+fmtUsd(p.usd)+'<div style="font-size:10px">'+(+p.ym.slice(4))+'월 1~'+p.d+'일 '+
+    '<span class="dtag prov">잠정</span></div></td>';
+}
 function subRowsHtml(rows){
-  if(!rows.length) return '<tr><td colspan="9" class="mut">조건에 맞는 세부품목이 없습니다.</td></tr>';
+  if(!rows.length) return '<tr><td colspan="10" class="mut">조건에 맞는 세부품목이 없습니다.</td></tr>';
   let h = '';
   for(const r of rows.slice(0, 300)){          // 화면 렌더 상한 — 필터로 좁혀 쓴다
     h += '<tr class="hrow'+(r.code===subSel?' sel':'')+'" data-sub="'+r.code+'" style="cursor:pointer">'+
       '<td class="tl">'+(r.name||'').slice(0,28)+
         '<div class="mut" style="font-size:10px">'+r.code+' · '+(r.parent||'').slice(0,16)+'</div></td>'+
       '<td class="mut">'+(r.group||'')+'</td>'+
-      '<td>'+fmtUsd(r.export)+'</td>'+
+      '<td>'+fmtUsd(r.export)+'</td>'+provSubCell(r.code)+
       '<td>'+fmtPct(r.mom)+'</td><td>'+fmtPct(r.yoy)+'</td><td>'+fmtPct(r.mom3)+'</td>'+
       '<td>'+(r.wgt==null?'–':fmtKg(r.wgt/1000))+'</td>'+
       '<td>'+(r.unit==null?'–':fmtUnit(r.unit))+'</td>'+
       '<td>'+fmtPct(r.unit_mom)+'</td></tr>';
   }
-  if(rows.length>300) h += '<tr><td colspan="9" class="mut">…상위 300개만 표시 ('+
+  if(rows.length>300) h += '<tr><td colspan="10" class="mut">…상위 300개만 표시 ('+
     rows.length+'개 중). 검색이나 그룹으로 좁혀 보세요.</td></tr>';
   return h;
 }
@@ -1142,7 +1168,9 @@ function drawItmChart(){
     if(cap) cap.textContent = '행을 클릭하세요';
     if(leg) leg.innerHTML=''; return;
   }
-  if(t) t.textContent = (meta.name||meta.code)+' — '+meta.code;
+  const pv = subProv(subSel);
+  if(t) t.innerHTML = (meta.name||meta.code)+' — '+meta.code+
+    (pv ? ' <span class="dtag prov">● '+(+pv.ym.slice(4))+'월 1~'+pv.d+'일 잠정</span>' : '');
   if(!SUBSER && !subSeries(subSel)){             // 상위 6개 밖 — 전체 시계열 파일을 받고 다시 그린다
     if(cap) cap.innerHTML = '<span class="mut">불러오는 중…</span>';
     if(leg) leg.innerHTML = '';
