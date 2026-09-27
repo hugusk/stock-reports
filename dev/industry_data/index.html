@@ -30,7 +30,7 @@ h1{font-size:20px;margin:0 0 2px}
 .mkt-tab{padding:7px 18px;border:1px solid var(--grid);border-radius:20px;background:var(--card);
   color:var(--ink-2);cursor:pointer;font-weight:600;font-size:13px}
 .mkt-tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.golink{cursor:pointer;color:var(--accent)}.golink:hover{text-decoration:underline}
+.golink{cursor:pointer}
 tr[data-gosub]{cursor:pointer}
 /* 주가 겹쳐보기 칩 — 켜지면 해당 종목 선 색(--c)으로 채워져 차트 선과 짝이 보인다 */
 .ovchip{display:inline-block;padding:2px 9px;margin-right:5px;border-radius:12px;cursor:pointer;
@@ -1079,7 +1079,15 @@ function subRowsHtml(rows){
 function subSeries(code){
   for(const it of (HS.items||[]))
     for(const sb of (it.subs||[])) if(sb.code===code) return sb;
-  return null;
+  const ser = SUBSER && SUBSER[code];               // 7위 이하 — hs_subs.json에서
+  return ser ? {code, series: ser} : null;
+}
+// 세부품목 전체 시계열(hs_subs.json) — 페이지엔 품목당 상위 6개만 실려 있어 나머지는 여기서 받는다
+let SUBSER = null, SUBSER_P = null;
+function subSerLoad(){
+  if(!SUBSER_P) SUBSER_P = fetch('hs_subs.json').then(r=>r.ok?r.json():null)
+    .then(j=>{ SUBSER = (j&&j.s)||{}; }).catch(()=>{ SUBSER = {}; });
+  return SUBSER_P;
 }
 // ── 세부품목 차트 — 월 확정치 + 10일 구간(사용자 엑셀 원장 중 전국 합계로 검증된 것) ──
 // 관세청 품목별 API는 월 단위뿐이다. 10일 구간은 bandtrass 잠정 파일(10일·20일)에서만 나오므로
@@ -1135,10 +1143,16 @@ function drawItmChart(){
     if(leg) leg.innerHTML=''; return;
   }
   if(t) t.textContent = (meta.name||meta.code)+' — '+meta.code;
+  if(!SUBSER && !subSeries(subSel)){             // 상위 6개 밖 — 전체 시계열 파일을 받고 다시 그린다
+    if(cap) cap.innerHTML = '<span class="mut">불러오는 중…</span>';
+    if(leg) leg.innerHTML = '';
+    subSerLoad().then(()=>drawItmChart());
+    return;
+  }
   const rows = itmMonths(subSel);
   if(!rows.length){
     if(cap) cap.innerHTML = '<span class="mut">이 품목은 시계열이 없습니다 — '+
-      '차트는 각 품목 상위 6개 세부품목(+엑셀 원장에 있는 품목)만 담습니다(용량). 표의 요약값은 정확합니다.</span>';
+      '최근 3개월 수출이 없는 세부품목입니다.</span>';
     if(leg) leg.innerHTML=''; return;
   }
   const wgt = itmMetric==='wgt', p = wgt ? 1 : 0, sc = wgt ? 1/1000 : 1;
