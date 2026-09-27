@@ -281,8 +281,8 @@ function hsSectionHtml(){
   // 품목(4자리) 전체를 MoM·YoY·3개월추세로 늘어놓고 정렬한다. 행을 누르면
   // 품목별(HS) 탭(2차)으로 넘어가 그 품목의 세부 HS만 걸러 보여준다.
   const latest = HS.month||'';
-  // 10일 속보가 맨 위 — 월 중 가장 빠른 신호라 먼저 본다
-  let h = '<div id="td-host"></div>';
+  // 맨 위 '움직이는 품목'(확정 탭과 같은 카드) → 10일 속보 → 수출 흐름 → 추이
+  let h = movingCardHtml('hsjump') + '<div id="td-host"></div>';
   h += '<div class="card"><h2>수출 흐름 — 품목 '+items.length+'개</h2>'+
     '<div class="cap">확정 '+latest+dTag(latest)+
     (provNote()? ' · '+provNote() : '')+
@@ -347,32 +347,34 @@ function fxVisible(){
   return (HS.items||[]).filter(it=>
     (fxGroup==='ALL' || it.group===fxGroup) && (!fxHot || it.flag));
 }
-function fxSecHtml(){
-  const items = HS.items||[];
-  if(!items.length)
-    return '<div class="card"><h2>수출입 (확정)</h2><div class="mut">'+
-      (HS.has_key===false ? 'TRADE_API_KEY 미설정' : '수집된 데이터가 없습니다')+'</div></div>';
-  const s = HS.surge||{};
+// '움직이는 품목' 카드 — 확정·잠정 탭 공용. jump = 칩 data 속성 이름(탭마다 핸들러가 다르다)
+function movingCardHtml(jump){
+  const items = HS.items||[], s = HS.surge||{};
   const pk = it=>Math.max(it.mom3??-9e9, it.yoy??-9e9);
   const tr = it=>Math.min(it.mom3?? 9e9, it.yoy?? 9e9);
   const hot  = items.filter(x=>x.flag==='surge').sort((a,b)=>pk(b)-pk(a));
   const cold = items.filter(x=>x.flag==='slump').sort((a,b)=>tr(a)-tr(b));
   const latest = HS.month||'';
-
+  const pill = (cls, ic, it) => '<span class="pill '+cls+'" data-'+jump+'="'+it.hs+'">'+ic+' '+
+    (it.label||it.hs)+' '+fxPillStat(it)+'</span>';
   let h = '<div class="card"><h2>움직이는 품목</h2><div class="cap">기준 '+latest+dTag(latest)+
     ' · 급등 = 3개월 +'+s.mom3+'% 또는 YoY +'+s.yoy+'% · '+
     '급락 = 3개월 '+s.slump_mom3+'% 또는 YoY '+s.slump_yoy+'% · '+
     '최근 3개월 수출 $'+((s.min_export3||0)/1e6).toFixed(0)+'M 이상만 · '+
     '<span class="mut">칩을 누르면 해당 품목 차트로 이동</span></div>';
-  if(hot.length) h += '<div style="margin-bottom:6px">'+hot.map(it=>
-    '<span class="pill surge" data-fxjump="'+it.hs+'">🔥 '+(it.label||it.hs)+' '+
-    fxPillStat(it)+'</span>').join('')+'</div>';
-  if(cold.length) h += '<div>'+cold.map(it=>
-    '<span class="pill slump" data-fxjump="'+it.hs+'">🧊 '+(it.label||it.hs)+' '+
-    fxPillStat(it)+'</span>').join('')+'</div>';
+  if(hot.length)  h += '<div style="margin-bottom:6px">'+hot.map(it=>pill('surge','🔥',it)).join('')+'</div>';
+  if(cold.length) h += '<div>'+cold.map(it=>pill('slump','🧊',it)).join('')+'</div>';
   if(!hot.length && !cold.length)
     h += '<div class="mut">임계값을 넘은 품목이 없습니다 — 아래 표에서 전체 흐름을 보세요.</div>';
-  h += '</div>';
+  return h + '</div>';
+}
+function fxSecHtml(){
+  const items = HS.items||[];
+  if(!items.length)
+    return '<div class="card"><h2>수출입 (확정)</h2><div class="mut">'+
+      (HS.has_key===false ? 'TRADE_API_KEY 미설정' : '수집된 데이터가 없습니다')+'</div></div>';
+  const latest = HS.month||'';
+  let h = movingCardHtml('fxjump');
 
   h += '<div class="card"><h2>관심 품목 '+items.length+'개</h2>'+
     '<div class="cap">관세청 품목별 수출입실적(확정) · 관심목록은 '+
@@ -769,6 +771,16 @@ function bindHsRows(){
 // 1차 탭 전체 재바인딩 — 정렬로 섹션을 다시 그릴 때 칩·차트 핸들러도 같이 살린다
 function bindHsAll(){
   bindHsRows();
+  document.querySelectorAll('#prov-sec .pill[data-hsjump]').forEach(pl=>pl.addEventListener('click',()=>{
+    const hs = pl.dataset.hsjump;
+    if(!hsVisible().some(x=>x.hs===hs)){          // 필터에 가려져 있으면 풀고 다시 그린다
+      hsGroup='ALL'; hsHot=false;
+      document.getElementById('prov-sec').innerHTML = hsSectionHtml(); bindHsAll(); tdRender();
+    }
+    drawHsChart(hs);
+    document.querySelectorAll('#hs-tbody .hrow').forEach(x=>x.classList.toggle('sel', x.dataset.hs===hs));
+    document.getElementById('chart-hs').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }));
   document.querySelectorAll('#prov-sec .gchip[data-grp]').forEach(c=>c.addEventListener('click',()=>{
     hsGroup = c.dataset.grp; hsHot = false;
     document.getElementById('prov-sec').innerHTML = hsSectionHtml(); bindHsAll(); tdRender(); drawHsChart(hsSel);
