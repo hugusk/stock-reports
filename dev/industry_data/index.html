@@ -287,8 +287,10 @@ function hsSectionHtml(){
     '<div class="cap">확정 '+latest+dTag(latest)+
     (provNote()? ' · '+provNote() : '')+
     ' · <span class="mut">열 제목을 누르면 정렬 · 행을 누르면 세부품목으로</span></div>';
-  // 업종(그룹) 필터는 뺐다(2026-09-27 사용자 요청) — 52개라 전체를 한 표로 봐도 된다
   h += '<div style="margin-bottom:8px">'+
+    '<span class="gchip'+(hsGroup==='ALL'?' on':'')+'" data-grp="ALL">전체</span>'+
+    (HS.groups||[]).map(g=>'<span class="gchip'+(hsGroup===g?' on':'')+
+      '" data-grp="'+g+'">'+g+'</span>').join('')+
     '<span class="gchip'+(hsHot?' on':'')+'" data-hot="1">🔥 움직인 것만</span></div>';
   h += '<div class="tbl-wrap"><table><thead><tr>'+
     hsTh('label','품목','tl')+hsTh('group','그룹')+
@@ -511,13 +513,21 @@ function hsRowsHtml(){
   let rows = hsVisible().slice();
   // dir=-1이 내림차순. x>y일 때 -1을 돌려줘야 큰 값이 앞에 온다 — 부호를 뒤집으면
   // 내림차순 화살표를 달고 오름차순으로 정렬된다(실제로 그랬다).
+  // '전체'일 땐 확정 탭처럼 그룹별로 묶는다 — 그룹 순서는 관심목록 순, 정렬은 그룹 안에서만
+  const gi = g => { const i=(HS.groups||[]).indexOf(g); return i<0 ? 999 : i; };
+  const byGroup = hsGroup==='ALL';
   rows.sort((a,b)=>{
+    if(byGroup && a.group!==b.group) return gi(a.group)-gi(b.group);
     const x=hsSortVal(a,hsSort.key), y=hsSortVal(b,hsSort.key);
     if(x<y) return -hsSort.dir; if(x>y) return hsSort.dir; return 0;
   });
   if(!rows.length) return '<tr><td colspan="8" class="mut">해당 조건의 품목이 없습니다.</td></tr>';
-  let h = '';
+  let h = '', lastG = null;
   for(const it of rows){
+    if(byGroup && it.group!==lastG){
+      lastG = it.group;
+      h += '<tr class="grp-h"><td colspan="8">'+it.group+'</td></tr>';
+    }
     const names = (it.tickers||[]).map(t=>t.name).join(', ') || '–';
     h += '<tr class="hrow'+(it.hs===hsSel?' sel':'')+'" data-hs="'+it.hs+'" style="cursor:pointer">'+
       '<td class="tl">'+(it.label||'').slice(0,26)+hsBadge(it.flag)+
@@ -751,8 +761,9 @@ function bindHsRows(){
   document.querySelectorAll('#prov-sec [data-sort]').forEach(th=>th.addEventListener('click',()=>{
     const k = th.dataset.sort;
     if(hsSort.key===k) hsSort.dir = -hsSort.dir; else hsSort = {key:k, dir:-1};
-    document.getElementById('prov-sec').innerHTML = hsSecHtml();
-    bindHsAll();
+    // 섹션 전체를 다시 그리므로 10일 속보·차트도 함께 다시 그린다
+    document.getElementById('prov-sec').innerHTML = hsSectionHtml();
+    bindHsAll(); tdRender(); drawHsChart(hsSel);
   }));
 }
 // 1차 탭 전체 재바인딩 — 정렬로 섹션을 다시 그릴 때 칩·차트 핸들러도 같이 살린다
@@ -760,11 +771,11 @@ function bindHsAll(){
   bindHsRows();
   document.querySelectorAll('#prov-sec .gchip[data-grp]').forEach(c=>c.addEventListener('click',()=>{
     hsGroup = c.dataset.grp; hsHot = false;
-    document.getElementById('prov-sec').innerHTML = hsSecHtml(); bindHsAll(); tdRender(); drawHsChart(hsSel);
+    document.getElementById('prov-sec').innerHTML = hsSectionHtml(); bindHsAll(); tdRender(); drawHsChart(hsSel);
   }));
   document.querySelectorAll('#prov-sec .gchip[data-hot]').forEach(c=>c.addEventListener('click',()=>{
     hsHot = !hsHot;
-    document.getElementById('prov-sec').innerHTML = hsSecHtml(); bindHsAll(); tdRender(); drawHsChart(hsSel);
+    document.getElementById('prov-sec').innerHTML = hsSectionHtml(); bindHsAll(); tdRender(); drawHsChart(hsSel);
   }));
   document.querySelectorAll('#prov-sec .cchip[data-hstype]').forEach(c=>c.addEventListener('click',()=>{
     hsType = c.dataset.hstype;
