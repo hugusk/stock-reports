@@ -241,8 +241,7 @@ body.embed .wrap { padding-top:8px; }
   <div class="view" id="view-heatmap">
     <div class="card" id="mfngCard">
       <h3 style="margin:0;font-size:15px">시장 F&G <span id="mfngMkt" class="mfng-badge"></span> <span style="font-weight:400;font-size:12px;color:var(--ink-3)">지수 단위 공포·탐욕 지수 — 자체 산출 (종목별 F&G시그널 탭과 별개)</span></h3>
-      <div class="chips" id="mfngMktChips" style="margin:8px 0 0"></div>
-      <div class="chips" id="mfngChips" style="margin:6px 0 0">
+      <div class="chips" id="mfngChips" style="margin:8px 0 0">
         <span class="chip on" data-v="fg">F&G + EMA20 + 오실레이터</span>
         <span class="chip" data-v="imp">Elder Impulse</span>
         <span class="chip" data-v="td">TD Setup (Sell / Buy)</span>
@@ -800,10 +799,18 @@ function renderTabs(){
   mt.innerHTML = '';
   Object.keys(DATA.markets).forEach(m => {
     const b = document.createElement('button');
-    b.textContent = m; b.className = (m === MARKET && !(VIEW === 'bottom' && SIG_BETA)) ? 'on' : '';
-    b.onclick = () => { MARKET = m; MFNG_MKT = null; SIG_BETA = false; renderAll(); };
+    b.textContent = m; b.className = (m === MARKET && !(VIEW === 'bottom' && SIG_BETA) && !(VIEW === 'heatmap' && US_HM)) ? 'on' : '';
+    b.onclick = () => { MARKET = m; MFNG_MKT = null; US_HM = null; SIG_BETA = false; renderAll(); };
     mt.appendChild(b);
   });
+  if (VIEW === 'heatmap'){                      // 미국 지수 — 히트맵 탭에만 (2026-10-04)
+    [['SPX','S&P500'],['NDX','Nasdaq100']].forEach(([k, nm]) => {
+      const b = document.createElement('button');
+      b.textContent = nm; b.className = US_HM === k ? 'on' : '';
+      b.onclick = async () => { US_HM = k; MFNG_MKT = k; await loadUsHm(); renderAll(); };
+      mt.appendChild(b);
+    });
+  }
   if (VIEW === 'bottom'){                       // F&G시그널 탭에만 — 매수가능기업(β) (2026-10-02)
     const b = document.createElement('button');
     b.textContent = '매수가능기업(β)'; b.className = SIG_BETA ? 'on' : '';
@@ -823,6 +830,17 @@ function renderTabs(){
 }
 
 function renderKpis(){
+  if (VIEW === 'heatmap' && US_HM && USHM){
+    const st = USHM.markets[US_HM].stocks, ups = st.filter(s => s.chg > 0).length, downs = st.filter(s => s.chg < 0).length;
+    const capSum = st.reduce((a,s) => a + (s.cap||0), 0), wchg = st.reduce((a,s) => a + (s.chg||0)*(s.cap||0), 0) / (capSum||1);
+    document.getElementById('kpis').innerHTML =
+      '<div class="kpi"><div class="lab">종목 수</div><div class="val">'+st.length+'</div></div>'+
+      '<div class="kpi"><div class="lab">상승 / 하락</div><div class="val"><span style="color:var(--up-text)">'+ups+'</span> / <span style="color:var(--down-text)">'+downs+'</span></div></div>'+
+      '<div class="kpi"><div class="lab">시총가중 등락</div><div class="val" style="color:var(--'+(wchg>0?'up':'down')+'-text)">'+fmtPct(wchg)+'</div></div>'+
+      '<div class="kpi"><div class="lab">시가총액 합</div><div class="val">'+fmtUsd(capSum)+'</div></div>'+
+      '<div class="kpi"><div class="lab">기준</div><div class="val" style="font-size:14px">미국 '+USHM.asof+' 종가</div></div>';
+    return;
+  }
   const st = DATA.markets[MARKET].stocks;
   const ups = st.filter(s => s.chg > 0).length, downs = st.filter(s => s.chg < 0).length;
   const capSum = st.reduce((a,s) => a + (s.cap||0), 0);
@@ -875,7 +893,14 @@ function squarify(items, x, y, w, h){
 
 /* ── 시장(지수) F&G 카드 — market_fng.json (kr_screener/market_fng.py). 종목별 F&G(bottom_rebound)와 별개 ── */
 let MFNG_OSC_RANGE = null;
-let MFNG_MKT = null;   // 카드 안 시장 선택(없으면 상단 시장 탭을 따름) — 미국 S&P500·Nasdaq100 포함
+let MFNG_MKT = null;
+let US_HM = null, USHM = null;     // 히트맵 탭의 미국 지수 선택(SPX·NDX) · us_heatmap.json (data_collector/us_heatmap)
+async function loadUsHm(){
+  if (USHM !== null) return USHM;
+  try { const r = await fetch('us_heatmap.json', {cache:'no-cache'}); USHM = r.ok ? await r.json() : false; } catch(e){ USHM = false; }
+  return USHM;
+}
+const fmtUsd = v => v == null ? '—' : v >= 1e12 ? '$' + (v/1e12).toFixed(2) + 'T' : v >= 1e9 ? '$' + (v/1e9).toFixed(1) + 'B' : '$' + (v/1e6).toFixed(0) + 'M';   // 카드 안 시장 선택(없으면 상단 시장 탭을 따름) — 미국 S&P500·Nasdaq100 포함
 let MFNG = null, MFNG_VIEW = 'fg', MFNG_CHART = null, MFNG_LOADING = false, MFNG_MA = {ema20:true, ema30:false, ema50:false, band:true};
 /* 뷰별 해설 — TD Setup은 이름이 Sell/Buy라 매매 지시로 오해되기 쉬워 읽는 법을 함께 적는다.
    실제로는 '종가가 N일 전보다 높은/낮은 날'이 며칠째 연속인지 세는 추세 소진도 지표다. */
@@ -913,13 +938,9 @@ async function renderMarketFng(){
     document.querySelectorAll('#mfngMaChips .chip').forEach(ch => ch.onclick = () => { MFNG_MA[ch.dataset.ma] = !MFNG_MA[ch.dataset.ma];
       ch.classList.toggle('on', MFNG_MA[ch.dataset.ma]); renderMarketFng(); }); }
   const US = MK === 'SPX' || MK === 'NDX';
-  const mc = document.getElementById('mfngMktChips');
-  mc.innerHTML = [['KOSPI','코스피'],['KOSDAQ','코스닥'],['SPX','S&P500'],['NDX','Nasdaq100']].map(([k, nm]) =>
-    '<span class="chip'+(k===MK?' on':'')+'" data-m="'+k+'">'+nm+'</span>').join('');
-  mc.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { MFNG_MKT = ch.dataset.m; renderMarketFng(); });
   chips.querySelectorAll('.chip').forEach(ch => { const v = ch.dataset.v;
-    ch.style.display = (US && (v === 'adr' || v === 'cap')) || (!US && v === 'sma') ? 'none' : ''; });
-  if ((US && (MFNG_VIEW === 'adr' || MFNG_VIEW === 'cap')) || (!US && MFNG_VIEW === 'sma')){ MFNG_VIEW = 'fg';
+    ch.style.display = (US && v === 'cap') || (!US && v === 'sma') ? 'none' : ''; });
+  if ((US && MFNG_VIEW === 'cap') || (!US && MFNG_VIEW === 'sma')){ MFNG_VIEW = 'fg';
     chips.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.v === 'fg')); }
   document.getElementById('mfngMaChips').style.display = MFNG_VIEW === 'fg' ? '' : 'none';
   const body = document.getElementById('mfngBody'), st = document.getElementById('mfngStatus'), note = document.getElementById('mfngNote');
@@ -941,7 +962,7 @@ async function renderMarketFng(){
     + (MFNG_VIEW === 'fg' && m.osc_hi ? '<br>파란 점선 = 오실레이터 기준선 (최근 3개월 상·하위 10일 평균, 날짜마다 다시 계산)' : '')
     + (MFNG_VIEW === 'fg' && MFNG_MA.band && m.fg_hi ? '<br>붉은 음영 = F&G 밴드 (F&G 20일 이평 ± 최근 1년 이격 상·하위 20일 평균) · 오늘 '
         + m.fg_lo[m.fg_lo.length-1] + ' ~ ' + m.fg_hi[m.fg_hi.length-1] : '')
-    + (MFNG_VIEW_NOTE[MFNG_VIEW] ? '<br>' + MFNG_VIEW_NOTE[MFNG_VIEW] : '');
+    + (MFNG_VIEW_NOTE[MFNG_VIEW] ? '<br>' + (US ? MFNG_VIEW_NOTE[MFNG_VIEW].replace('해당 시장 시총 상위 종목', MKN + ' 구성 종목, 야후 종가') : MFNG_VIEW_NOTE[MFNG_VIEW]) : '');
   if (MFNG_VIEW === 'cap'){ renderMfngCap(body); return; }
   const el = document.createElement('div'); el.id = 'mfngChart'; body.appendChild(el);
   // 축은 전부 왼쪽으로 통일 — 오른쪽 지수 라벨이 차트 끝을 가려 마지막 구간이 안 보였다.
@@ -1130,7 +1151,9 @@ function renderHeatmap(){
   document.getElementById('hmLo').textContent = '-' + tf.s + '%';
   document.getElementById('hmHi').textContent = '+' + tf.s + '%';
 
-  const stocks = DATA.markets[MARKET].stocks;
+  const US = US_HM && USHM;
+  const stocks = US ? USHM.markets[US_HM].stocks : DATA.markets[MARKET].stocks;
+  const capFmt = US ? fmtUsd : fmtCap;
   const bySec = {};
   stocks.forEach(s => { if (s.cap) (bySec[s.sector] = bySec[s.sector] || []).push(s); });
   const sectors = Object.entries(bySec)
@@ -1171,9 +1194,10 @@ function renderHeatmap(){
         t.innerHTML = `<span class="tn" style="font-size:9.5px">${s.name}</span>`;
       t.onmousemove = e => showTip(e,
         '<b>' + s.name + '</b>' + (s.code ? ' ' + s.code : '') + '<br>' +
-        sr.it.name + ' · 시총 ' + fmtCap(s.cap) + '<br>' + tf.l + ' <b>' + fmtPct(v) + '</b>');
+        (s.full ? esc(s.full) + '<br>' : '') + sr.it.name + (s.industry ? ' · ' + esc(s.industry) : '') + ' · 시총 ' + capFmt(s.cap) + '<br>' + tf.l + ' <b>' + fmtPct(v) + '</b>');
       t.onmouseleave = hideTip;
-      if (s.code) t.onclick = () => openStock(s.code);
+      if (s.code) t.onclick = US ? () => window.open('https://finviz.com/quote.ashx?t=' + encodeURIComponent(s.code), '_blank', 'noopener')
+                                 : () => openStock(s.code);
       div.appendChild(t);
     });
     box.appendChild(div);
