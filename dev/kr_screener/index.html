@@ -1772,7 +1772,12 @@ async function loadUsLiq(){
 function usLiqCard(q){
   const tone = s => /🔴|⚠️|★☆☆☆☆|★★☆☆☆|긴축|부정|위축|비우호/.test(s) ? '#dc2626' : /🟠|🟡|주의|★★★☆☆|혼조|관찰/.test(s) ? '#d97706'
                   : /🟢|양호|★★★★|우호|긍정|확장|안정/.test(s) ? '#16a34a' : 'var(--ink-2)';
-  const row = ([k, v]) => '<tr><td class="l" style="white-space:nowrap;color:var(--ink-3)">'+esc(k)+'</td><td class="l" style="color:'+tone(v)+'">'+esc(v)+'</td></tr>';
+  // 5단계 신호등 — 1 빨강 · 2 주황 · 3 노랑 · 4 연두 · 5 초록, 해당 단계 원만 켜고 나머지는 흐리게(2026-10-04 사용자 요청)
+  const LV = ['#dc2626','#f97316','#eab308','#84cc16','#16a34a'];
+  const dots = lv => '<span style="display:inline-flex;gap:3px;vertical-align:-1px" title="'+lv+'/5">'+LV.map((c, i) =>
+    '<span style="width:10px;height:10px;border-radius:50%;background:'+c+';opacity:'+(i === lv-1 ? 1 : 0.18)+'"></span>').join('')+'</span>';
+  const row = ([k, v, lv]) => '<tr><td class="l" style="white-space:nowrap;color:var(--ink-1)">'+esc(k)+'</td>'+
+    '<td class="l" style="white-space:nowrap">'+(lv ? dots(lv) : '')+'</td><td class="l" style="color:var(--ink-1)">'+esc(v)+'</td></tr>';
   const sg = s => '<li style="color:'+(s[0]==='+'?'#16a34a':s[0]==='-'?'#dc2626':'var(--ink-2)')+'">'+esc(s[1])+' ('+s[0]+')</li>';
   const li = s => '<li>'+esc(s)+'</li>';
   const n = (v, u, p) => v == null ? '—' : (p && v > 0 ? '+' : '') + v + (u || '');
@@ -1786,8 +1791,8 @@ function usLiqCard(q){
       '<span>고용 스트레스 <b>'+q.labor_score+' / 5</b></span><span>엔캐리 위험 <b>'+q.carry_score+' / 6</b></span>'+
       '<span>금융충격 <b>'+q.shock_score+' / 3</b></span></div>'+
     '<div style="overflow-x:auto"><table class="data" style="font-size:12.5px"><tbody>'+q.summary.map(row).join('')+'</tbody></table></div>'+
-    '<div style="font-size:12.5px;margin-top:6px"><span class="mut">자산별 해석</span> · '+q.assets.map(([k, v]) =>
-      '<b>'+esc(k)+'</b> <span style="color:'+tone(v)+'">'+esc(v)+'</span>').join(' · ')+'</div>'+
+    '<div style="font-size:12.5px;margin-top:6px;color:var(--ink-1)">자산별 해석 · '+q.assets.map(([k, v]) =>
+      '<b>'+esc(k)+'</b> <span style="color:var(--ink-1)">'+esc(v)+'</span>').join(' · ')+'</div>'+
     '<div id="usLiqChart" style="height:180px;margin:8px 0 2px"></div>'+
     '<div class="mut" style="font-size:11px">파랑 = Fed/Treasury Liquidity Proxy(Fed 자산 − TGA − RRP, 조 달러, 왼쪽) · 주황 = 2Y 국채금리(%) · 최근 2년 주간</div>'+
     det('금리 · Fed · 은행 신용 (현재 / 최근 4주 변화)',
