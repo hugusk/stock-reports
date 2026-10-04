@@ -918,6 +918,8 @@ const MFNG_VIEW_NOTE = {
   adr: '<b style="color:#e8833a">ADR</b> = 최근 20거래일 <b>상승종목수 합 ÷ 하락종목수 합 × 100</b> (해당 시장 시총 상위 종목).' +
        ' 시장에 오르는 종목이 얼마나 넓게 퍼져 있는지를 봅니다 — <b style="color:#d64545">120 이상 과열</b>,' +
        ' <b style="color:#3b7dd8">75 이하 침체</b>가 관례적 기준입니다. 지수가 오르는데 ADR이 안 따라오면 상승이 소수 종목에 쏠린 것입니다.',
+  sma: '<b style="color:#F57C00">SuperMA</b> = 20·60·120·200일 이동평균의 평균(장단기 추세를 하나로 합친 선) · <b style="color:#8e44ad">이격</b> = (지수 − SuperMA) ÷ SuperMA × 100. '+
+       '+가 클수록 추세보다 많이 올라 과열, −가 클수록 추세 아래로 과매도 · 0 근처면 추세선에 붙어 있음.',
   td: '<b style="color:#d64545">TD Sell 증가</b> → 고점 경계 &nbsp;·&nbsp; <b style="color:#3b7dd8">TD Buy 증가</b> → 저점 접근 &nbsp;·&nbsp; 0으로 리셋되면 그 방향의 연속이 끊긴 것. 매매 지시가 아니라 추세가 며칠째 이어졌는지 세는 소진도 지표입니다.'
 };
 function mfngDate(d){ return d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6); }
@@ -938,9 +940,10 @@ async function renderMarketFng(){
     document.querySelectorAll('#mfngMaChips .chip').forEach(ch => ch.onclick = () => { MFNG_MA[ch.dataset.ma] = !MFNG_MA[ch.dataset.ma];
       ch.classList.toggle('on', MFNG_MA[ch.dataset.ma]); renderMarketFng(); }); }
   const US = MK === 'SPX' || MK === 'NDX';
+  const m0 = (MFNG && MFNG.markets && MFNG.markets[MK]) || {};
   chips.querySelectorAll('.chip').forEach(ch => { const v = ch.dataset.v;
-    ch.style.display = (US && v === 'cap') || (!US && v === 'sma') ? 'none' : ''; });
-  if ((US && MFNG_VIEW === 'cap') || (!US && MFNG_VIEW === 'sma')){ MFNG_VIEW = 'fg';
+    ch.style.display = (US && v === 'cap') || (v === 'sma' && !m0.sma) ? 'none' : ''; });
+  if ((US && MFNG_VIEW === 'cap') || (MFNG_VIEW === 'sma' && !m0.sma)){ MFNG_VIEW = 'fg';
     chips.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.v === 'fg')); }
   document.getElementById('mfngMaChips').style.display = MFNG_VIEW === 'fg' ? '' : 'none';
   const body = document.getElementById('mfngBody'), st = document.getElementById('mfngStatus'), note = document.getElementById('mfngNote');
@@ -1032,7 +1035,7 @@ async function renderMarketFng(){
                           axisLabelVisible:false, title:nm}));
   } else if (MFNG_VIEW === 'sma'){
     // SuperMA = 20·60·120·200일 이평의 평균, 이격 = (가격 − SuperMA) ÷ SuperMA (사용자 코랩 코드)
-    line(m.etf_p, {color:cssVar('--ink-2'), lineWidth:1.6, priceScaleId:'idx', title:m.etf});
+    line(m.etf_p || m.p, {color:cssVar('--ink-2'), lineWidth:1.6, priceScaleId:'idx', title:m.etf || MKN});
     line(m.sma, {color:'#F57C00', lineWidth:1.4, lineStyle:2, priceScaleId:'idx', title:'SuperMA'});
     const gp = line(m.gap, {color:'#8e44ad', lineWidth:1.8, priceScaleId:'left', title:'이격%'});
     gp.createPriceLine({price:0, color:cssVar('--ink-3'), lineWidth:1, lineStyle:2, axisLabelVisible:false});
