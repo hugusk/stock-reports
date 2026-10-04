@@ -1814,9 +1814,16 @@ function usLiqCard(q){
       ') · Nikkei 5일 '+n(Y.Nikkei_5D,'%',1)+(Y.CarryGap!=null?' · 미·일 금리차 '+n(Y.CarryGap,'%p',1):'')+
       '<br><span class="mut">2024-08-05: 엔화 4주 '+n(Y4.JPY_4W,'%',1)+' · 2Y 4주 '+n(Y4.US2Y_4W,'%p',1)+' · VIX '+Y4.VIX+' · Nikkei 5일 '+n(Y4.Nikkei_5D,'%',1)+' · Sahm '+Y4.Sahm+'</span>'+
       '<ul style="margin:4px 0;padding-left:18px">'+q.carry_signals.map(li).join('')+'</ul>')+
+    (q.spread || q.pcr ? det('장·단기 금리 스프레드 · Put/Call Ratio',
+      (q.spread ? '10Y−3M <b>'+n(q.spread.t10y3m,'%p',1)+'</b> · 10Y−2Y <b>'+n(q.spread.t10y2y,'%p',1)+'</b>'+
+        (q.spread.last_inv ? ' · 10Y−3M 마지막 역전 '+esc(q.spread.last_inv) : '')+
+        '<br><span class="mut">단계: 10Y−3M −0.5 미만 빨강 · 0 미만 주황 · 0~0.5 노랑 · 0.5~1.0 연두 · 1.0 이상 초록 (최근 1년 안에 역전했다 풀렸으면 노랑까지만)</span>' : '')+
+      (q.pcr && q.pcr.hist && q.pcr.hist.length ? '<br>CBOE 주식 Put/Call 5일평균 <b>'+q.pcr.avg5+'</b> · 최근 5일 '+
+        q.pcr.hist.slice(-5).map(h => h[0].slice(5)+' '+h[1].toFixed(2)).join(' · ')+
+        '<br><span class="mut">단계: 0.95 이상 빨강(극단 공포) · 0.75~0.95 노랑(공포) · 0.55~0.75 초록(정상) · 0.45~0.55 연두(낙관) · 0.45 미만 주황(극단 낙관) — 양 끝이 위험, 역발상으로도 쓰는 지표</span>' : '')) : '')+
     det('갑작스러운 금융충격 감시',
       '<ul style="margin:4px 0;padding-left:18px">'+q.shock_signals.map(li).join('')+'</ul>'+esc(q.shock_context))+
-    '<div class="sec-note" style="margin-top:6px">판정 규칙·임계값은 사용자 코랩 코드 그대로 — 매매 권유가 아닌 참고 지표</div></div>';
+    '<div class="sec-note" style="margin-top:6px">판정 규칙·임계값은 사용자 코랩 코드 그대로(장·단기 스프레드·Put/Call 두 줄은 추가 기준, 펼침 항목에 단계 표기) — 매매 권유가 아닌 참고 지표</div></div>';
 }
 function drawUsLiqChart(q){
   const el = document.getElementById('usLiqChart');
