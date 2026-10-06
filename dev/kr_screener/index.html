@@ -295,7 +295,7 @@ body.embed .wrap { padding-top:8px; }
       </div>
       <div class="rank" id="usRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
       <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (SPY 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
-        <b>Mansfield RS</b> = (SPY 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20</p>
+        <b>Mansfield RS</b> = (SPY 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20<br><b>🔥 가격 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 가격 눌림</b> = 어제 가격 F&amp;G가 5일 최저·EMA20 아래였고 오늘 반등 · <b>⚠️ 수급 이탈</b> = 값은 올랐는데 외국인+기관 수급 F&amp;G가 사흘 연속 내려 5일 고점보다 10점 이상 빠짐(국내 지수만)</p>
       </div>
       <div class="card" id="usSecChartCard">
         <div id="usSecHead" style="font-size:13.5px;margin-bottom:6px"></div>
@@ -330,7 +330,7 @@ body.embed .wrap { padding-top:8px; }
       </div>
       <div class="rank" id="krRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
       <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
-        <b>Mansfield RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20</p>
+        <b>Mansfield RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20<br><b>🔥 가격 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 가격 눌림</b> = 어제 가격 F&amp;G가 5일 최저·EMA20 아래였고 오늘 반등 · <b>⚠️ 수급 이탈</b> = 값은 올랐는데 외국인+기관 수급 F&amp;G가 사흘 연속 내려 5일 고점보다 10점 이상 빠짐(국내 지수만)</p>
     </div>
     <div class="card" id="secChartCard">
       <div id="secHead" style="font-size:13.5px;margin-bottom:6px"></div>
@@ -2881,8 +2881,11 @@ function _secGap(r){                 // 수급 F&G의 EMA20 대비 괴리(%) —
 }
 let SEC_REGION = 'kr';
 const RSC = {krRs:{k:'rs_adj', f:'all', dup:true}, usRs:{k:'rs_adj', f:'all', dup:true}};
-const leadBadge = b => b === 'hot' ? '<span title="30일선 대비 이격이 최근 1년 상위 3%" style="font-size:11px;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:0 4px">🔥 과열</span>'
-  : b === 'pull' ? '<span title="어제 F&G가 최근 5일 최저·EMA20 아래였고 오늘 반등" style="font-size:11px;border:1px solid #16a34a;color:#16a34a;border-radius:4px;padding:0 4px">🟢 눌림</span>' : '';
+const _bdg = (txt, col, tip) => '<span title="'+tip+'" style="font-size:11px;border:1px solid '+col+';color:'+col+';border-radius:4px;padding:0 4px;margin-left:2px">'+txt+'</span>';
+// 배지 (2026-10-06 사용자 요청) — 가격 과열·가격 눌림은 가격만, 수급 이탈은 외국인+기관 수급 F&G(국내 지수만)
+const leadBadge = (b, r) => (b === 'hot' ? _bdg('🔥 가격 과열', '#dc2626', '30일선 대비 이격이 최근 1년 상위 3%')
+  : b === 'pull' ? _bdg('🟢 가격 눌림', '#16a34a', '어제 가격 F&G가 최근 5일 최저·EMA20 아래였고 오늘 반등') : '')
+  + (r && r.sup_out ? _bdg('⚠️ 수급 이탈', '#d97706', '값은 올랐는데 외국인+기관 수급 F&G가 사흘 연속 내려 최근 5일 고점보다 10점 이상 빠짐') : '');
 /* RS 상위 카드 — 국내·해외 공용, 기준 칩(국내식 RS / Mansfield RS) (2026-10-06 사용자 요청: 예전 국내 RS 화면으로 되돌리고 기준 비교) */
 function renderRsCard(pid, rows, sel, onPick){
   const st = RSC[pid], chips = document.getElementById(pid+'Chips'), key = document.getElementById(pid+'Key');
@@ -2909,7 +2912,7 @@ function renderRsCard(pid, rows, sel, onPick){
     return '<div class="row" style="grid-template-columns:22px 1fr auto;cursor:pointer'+(sel===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
       '<span class="n">'+(i+1)+'</span>'+
       '<span class="nm"><b>'+esc(r.name)+'</b>'+(st.dup && r.sim ? ' <span class="mut" style="font-size:11px">+'+r.sim+' 유사</span>' : '')+
-        ' <span class="mut" style="font-size:11px">'+esc(r.grp)+'</span> '+leadBadge(r.badge)+'</span>'+
+        ' <span class="mut" style="font-size:11px">'+esc(r.grp)+'</span> '+leadBadge(r.badge, r)+'</span>'+
       '<span class="v" style="font-size:12px;white-space:nowrap">'+
         (jump ? '⚡ <b style="color:var(--up-text)">'+(r.rs_dchg>0?'+':'')+r.rs_dchg.toFixed(2)+'</b> <span class="mut">(RS '+(r.rs_adj??0).toFixed(2)+')</span>'
               : KN+' <b style="color:var(--'+(r[K]>0?'up':'down')+'-text)">'+fmt(r[K])+'</b>'+
@@ -3034,7 +3037,7 @@ function drawUsSectorChart(r){
   const t = x => x.slice(0,4)+'-'+x.slice(4,6)+'-'+x.slice(6);
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+(v>0?'+':'')+v.toFixed(2)+'%</span>';
   hd.innerHTML = '<b>'+esc(r.name)+'</b> <span class="mut">'+esc(r.grp)+'</span> · $'+fmtNum(r.c)+' '+pc(r.chg)+
-    ' · RS <b>'+(r.rs_adj==null?'—':r.rs_adj.toFixed(2))+'</b> · Mansfield '+(r.ms==null?'—':(r.ms>0?'+':'')+r.ms.toFixed(1))+' '+leadBadge(r.badge)+
+    ' · RS <b>'+(r.rs_adj==null?'—':r.rs_adj.toFixed(2))+'</b> · Mansfield '+(r.ms==null?'—':(r.ms>0?'+':'')+r.ms.toFixed(1))+' '+leadBadge(r.badge, r)+
     ' · 30일 이격 '+pc(r.gap30)+' / 97% 구간 '+(r.p97==null?'—':r.p97.toFixed(2)+'%')+' · 과열도 <b>'+(r.heat??'—')+'</b>'+
     (r.full_al ? ' · 🔥완전 정배열 '+r.full_al_s+'부터 '+r.full_al_n+'거래일' : r.ma_al ? ' · 📈이평 정배열 '+r.ma_al_s+'부터 '+r.ma_al_n+'거래일' : '');
   const ch = USSEC_CHART = LWC.createChart(el, smChartOpts());
