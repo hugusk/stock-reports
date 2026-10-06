@@ -1831,9 +1831,36 @@ function usLiqCard(q){
         q.pcr.hist.slice(-5).map(h => h[0].slice(5)+' '+h[1].toFixed(2)).join(' · ')+
         '<br><span class="mut">US 단계: 0.95 이상 빨강(극단 공포) · 0.75~0.95 노랑(공포) · 0.55~0.75 초록(정상) · 0.45~0.55 연두(낙관) · 0.45 미만 주황(극단 낙관) — 양 끝이 위험, 역발상으로도 쓰는 지표</span>' : '')+
       '<br><span class="mut">KR Put/Call = KOSPI200 옵션(주간) 풋 거래량 ÷ 콜 거래량, 금융위 공개 원장 · 국내는 평소 0.9 안팎이라 기준을 국내 이력 분포로 잡음: 상위 10% 빨강 · 상위 30% 노랑 · 가운데 초록 · 하위 30% 연두 · 하위 10% 주황</span>') : '')+
+    '<details open style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600">미국 ETF → 한국 주식 자금 (주간·월간 누적)</summary>'+
+      '<div class="chips" id="usFlowAggChips" style="margin:6px 0 0"><span class="chip on" data-p="w">주간</span><span class="chip" data-p="m">월간</span></div>'+
+      '<div id="usFlowAgg" style="height:200px;margin:6px 0 2px"></div>'+
+      '<div class="mut" style="font-size:11px">막대 = 그 주(달) 유출입 합계 · 선 = 1년 누적(오른쪽 축) · 한국 주식을 담은 미국 ETF(iShares 11개 + 라운드힐 DRAM)의 설정·환매 × 한국 비중 · 근사치라 모든 금액 앞에 \'약\' · '+
+      '일별 숫자는 이미 일어난 일을 따라가는 후행 지표(코스피 전날 수익률과 상관 +0.12, 다음날 −0.06)라 몇 주~몇 달 흐름으로만 본다 · 신호등 = 최근 4주 누적의 1년 내 위치</div></details>'+
     det('갑작스러운 금융충격 감시',
       '<ul style="margin:4px 0;padding-left:18px">'+q.shock_signals.map(li).join('')+'</ul>'+esc(q.shock_context))+
     '<div class="sec-note" style="margin-top:6px">판정 규칙·임계값은 사용자 코랩 코드 그대로(장·단기 스프레드·US/KR Put/Call 줄은 추가 기준, 펼침 항목에 단계 표기) — 매매 권유가 아닌 참고 지표</div></div>';
+}
+let US_FLOW_AGG = null, US_FLOW_P = 'w';
+function drawUsFlowAgg(u){
+  const el = document.getElementById('usFlowAgg'); if (!el || !u.series) return;
+  const ch = document.getElementById('usFlowAggChips');
+  if (!ch.dataset.bound){ ch.dataset.bound = '1'; ch.querySelectorAll('.chip').forEach(c => c.onclick = () => { US_FLOW_P = c.dataset.p;
+    ch.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); drawUsFlowAgg(u); }); }
+  if (US_FLOW_AGG){ try { US_FLOW_AGG.remove(); } catch(e){} }
+  const s = u.series.filter(([d, v]) => v != null);
+  while (s.length && s[s.length-1][1] === 0) s.pop();
+  const key = d => { const dt = new Date(d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6));
+    if (US_FLOW_P === 'm') return d.slice(0,4)+'-'+d.slice(4,6)+'-01';
+    const m = new Date(dt); m.setDate(dt.getDate() - ((dt.getDay()+6)%7)); return m.toISOString().slice(0,10); };   // 그 주 월요일
+  const agg = {}; s.forEach(([d, v]) => agg[key(d)] = (agg[key(d)] || 0) + v);
+  const ks = Object.keys(agg).sort(); let cum = 0;
+  const c = US_FLOW_AGG = LWC.createChart(el, Object.assign(smChartOpts(), {leftPriceScale:{visible:true, borderColor:cssVar('--grid')}}));
+  const up = cssVar('--up'), down = cssVar('--down'), fmt = v => _yak(v);
+  c.addSeries(LWC.HistogramSeries, {priceScaleId:'left', priceLineVisible:false, lastValueVisible:false,
+      priceFormat:{type:'custom', formatter:fmt}}).setData(ks.map(k => ({time:k, value:Math.round(agg[k]), color:agg[k]>=0?up:down})));
+  c.addSeries(LWC.LineSeries, {priceScaleId:'right', color:cssVar('--ink-2'), lineWidth:1.6, priceLineVisible:false,
+      priceFormat:{type:'custom', formatter:fmt}}).setData(ks.map(k => ({time:k, value:Math.round(cum += agg[k])})));
+  c.timeScale().fitContent();
 }
 function drawUsLiqChart(q){
   const el = document.getElementById('usLiqChart');
@@ -1854,9 +1881,10 @@ async function renderDashboard(){
   renderDashKpis();
   host.innerHTML = '';
   const lq = await loadUsLiq();                                 // 미국 매크로·유동성 판정 (맨 위, 2026-10-04)
-  if (lq && lq.summary) { host.insertAdjacentHTML('beforeend', usLiqCard(lq)); drawUsLiqChart(lq); }
-  const uf = await loadUsFlow();                               // 미국 ETF → 국내 유출입(대시보드 첫 카드)
-  if (uf) { host.insertAdjacentHTML('beforeend', usFlowCard(uf)); drawUsFlowChart(uf); }
+  if (lq && lq.summary) { host.insertAdjacentHTML('beforeend', usLiqCard(lq)); drawUsLiqChart(lq);
+    const uf0 = await loadUsFlow(); if (uf0) drawUsFlowAgg(uf0); }
+  // 미국 ETF → 국내 유출입은 단독 카드에서 빼고 유동성 카드 15번째 줄 + 주간·월간 누적 차트로 옮겼다(2026-10-06 사용자 결정 —
+  // 일별 숫자는 이미 일어난 일을 따라가는 후행 지표라 매매 신호로는 쓸모가 없었다)
   host.insertAdjacentHTML('beforeend', investorFlowCard(d));   // 상단 정보 카드 (필터 무관)
   host.insertAdjacentHTML('beforeend', targetUpgradeCard(d));   // 투자자별 순매수 바로 아래
   host.insertAdjacentHTML('beforeend', epsChangeCard(d));
