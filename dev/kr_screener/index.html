@@ -276,6 +276,7 @@ body.embed .wrap { padding-top:8px; }
       <span class="chip on" data-r="kr">국내</span><span class="chip" data-r="us">해외 (미국 업종·테마 ETF)</span>
     </div>
     <div id="secUs" style="display:none">
+      <div class="card" id="usThemeCard" style="margin-bottom:12px"></div>
       <div class="card" style="margin-bottom:12px">
       <h3 style="margin:0 0 8px;font-size:14px">RS 상위 <span id="usRsCnt"></span> <span class="mut" style="font-weight:400;font-size:12px" id="usRsNote"></span></h3>
       <div class="chips" id="usRsKey">
@@ -2921,22 +2922,30 @@ function renderRsCard(pid, rows, sel, onPick){
   host.querySelectorAll('.row[data-c]').forEach(el => el.onclick = () => onPick(el.dataset.c, true));
 }
 /* 주도 테마 — RS(Mansfield) 상위 30 ETF의 비중 상위 종목 겹침을 업종으로 묶음, 평소 출현율 보정 (kr_screener/lead_theme) */
-let LTHEME = null;
-async function renderLeadTheme(){
-  const host = document.getElementById('leadThemeCard');
-  if (LTHEME === null){ try { const r = await fetch('lead_theme.json', {cache:'no-cache'}); LTHEME = r.ok ? await r.json() : false; } catch(e){ LTHEME = false; } }
-  if (!LTHEME || !LTHEME.themes){ host.style.display = 'none'; return; }
-  const L = LTHEME, mx = Math.max(...L.themes.map(x => x.excess)) || 1;
+const LTHEME = {};
+async function renderLeadTheme(hostId, file, us){
+  const host = document.getElementById(hostId);
+  if (LTHEME[file] === undefined){ try { const r = await fetch(file, {cache:'no-cache'}); LTHEME[file] = r.ok ? await r.json() : false; } catch(e){ LTHEME[file] = false; } }
+  const L = LTHEME[file];
+  if (!L || !L.themes || !L.themes.length){ host.style.display = 'none'; return; }
+  host.style.display = '';
+  const mx = Math.max(...L.themes.map(x => x.excess)) || 1, dd = s => s.slice(4,6)+'/'+s.slice(6);
   const d5 = v => v == null ? '<span class="mut">—</span>' : v > 0 ? '<b style="color:var(--up-text)">▲'+v.toFixed(1)+'</b>' : v < 0 ? '<span style="color:var(--down-text)">▼'+(-v).toFixed(1)+'</span>' : '<span class="mut">0</span>';
-  host.innerHTML = '<h3 style="margin:0 0 4px;font-size:14px">주도 테마 <span class="mut" style="font-weight:400;font-size:12px">RS(Mansfield) 상위 30개 국내 주식 ETF의 비중 상위 10종목이 얼마나 겹치나 — 평소 출현율을 빼고 업종별로 · ETF 기준 '+
-      L.day.slice(4,6)+'/'+L.day.slice(6)+' · 구성 '+L.snap.slice(4,6)+'/'+L.snap.slice(6)+'</span></h3>'+
+  const stock = s => us ? '<a href="https://finviz.com/quote.ashx?t='+encodeURIComponent(s.code)+'" target="_blank" rel="noopener" style="color:inherit" title="'+esc(s.name)+' · Mansfield '+s.ms+'">'+esc(s.code)+'</a>'
+                        : '<span style="cursor:pointer" onclick="openStock(\''+s.code+'\')">'+esc(s.name)+'</span>';
+  host.innerHTML = '<h3 style="margin:0 0 4px;font-size:14px">주도 테마 <span class="mut" style="font-weight:400;font-size:12px">'+
+      (us ? 'S&amp;P500·Nasdaq100 '+L.n_pool+'종목을 Mansfield RS(SPY 대비)로 줄 세운 상위 '+L.top_n+'종목이 어느 세부업종(GICS)에 몰렸나 — 평소 비중을 빼고 · 기준 '+dd(L.day)+' (미국 종가)'
+          : 'RS(Mansfield) 상위 30개 국내 주식 ETF의 비중 상위 10종목이 얼마나 겹치나 — 평소 출현율을 빼고 업종별로 · ETF 기준 '+dd(L.day)+' · 구성 '+dd(L.snap))+'</span></h3>'+
     '<div style="display:grid;gap:6px;margin-top:6px">'+L.themes.map(x =>
-      '<div style="display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:start;font-size:12.5px">'+
-        '<div><b>'+esc(x.ind)+'</b><div style="height:6px;border-radius:3px;background:var(--up);opacity:.75;margin-top:4px;width:'+Math.max(6, x.excess/mx*100)+'%"></div></div>'+
-        '<div>초과 겹침 <b>+'+x.excess.toFixed(1)+'</b> <span class="mut">(관측 '+x.obs+' · 평소 '+x.exp+' · ×'+x.lift+')</span> · 지난주 대비 '+d5(x.d5)+
-          '<br><span class="mut">종목</span> '+x.stocks.map(s => '<span style="cursor:pointer" onclick="openStock(\''+s.code+'\')">'+esc(s.name)+'</span>').join(' · ')+
-          '<br><span class="mut">ETF</span> '+x.etfs.map(esc).join(' · ')+'</div></div>').join('')+'</div>'+
-    '<p class="sec-note" style="margin:6px 0 0">관측 = 상위 30 ETF 안에서 그 업종 종목이 나온 횟수 · 평소 = 전체 ETF('+L.n_pool+'개)에서의 출현율 × 30 — SK하이닉스·삼성전자처럼 원래 많은 ETF에 있는 대형주는 평소 값도 커서 보정된다. 지수 이름(예: 코스닥 통신)이 실제 사업과 다를 때 구성 종목으로 바로잡는 용도.</p>';
+      '<div style="display:grid;grid-template-columns:'+(us?'210px':'150px')+' 1fr;gap:10px;align-items:start;font-size:12.5px">'+
+        '<div><b>'+esc(x.ind)+'</b>'+(us && x.sec ? ' <span class="mut" style="font-size:11px">'+esc(x.sec)+'</span>' : '')+
+          '<div style="height:6px;border-radius:3px;background:var(--up);opacity:.75;margin-top:4px;width:'+Math.max(6, x.excess/mx*100)+'%"></div></div>'+
+        '<div>초과 '+(us?'':'겹침 ')+'<b>+'+x.excess.toFixed(1)+'</b> <span class="mut">('+(us ? '상위 '+L.top_n+' 안 '+x.obs+'종목 · 평소 '+x.exp+' · 전체 '+x.n_all+'종목 중' : '관측 '+x.obs+' · 평소 '+x.exp)+' · ×'+x.lift+')</span> · 지난주 대비 '+d5(x.d5)+
+          '<br><span class="mut">종목</span> '+x.stocks.map(stock).join(' · ')+
+          (x.etfs ? '<br><span class="mut">ETF</span> '+x.etfs.map(esc).join(' · ') : '')+'</div></div>').join('')+'</div>'+
+    '<p class="sec-note" style="margin:6px 0 0">'+(us
+      ? '평소 = 그 세부업종 종목 수 ÷ 전체 종목 수 × '+L.top_n+' — 종목이 많은 업종이 상위에 자주 들어가는 것은 빼고 본다. 미국 업종 ETF는 구성 종목 데이터가 없어 종목 기준으로 계산한다. 종목 코드를 누르면 Finviz.'
+      : '관측 = 상위 30 ETF 안에서 그 업종 종목이 나온 횟수 · 평소 = 전체 ETF('+L.n_pool+'개)에서의 출현율 × 30 — SK하이닉스·삼성전자처럼 원래 많은 ETF에 있는 대형주는 평소 값도 커서 보정된다. 지수 이름(예: 코스닥 통신)이 실제 사업과 다를 때 구성 종목으로 바로잡는 용도.')+'</p>';
 }
 async function renderSector(){
   const rg = document.getElementById('secRegion');
@@ -2972,7 +2981,7 @@ async function renderSector(){
   tb.querySelectorAll('th').forEach(th => th.onclick = () => {
     const kk = th.dataset.k; SEC_SORT = {k:kk, d: SEC_SORT.k===kk ? -SEC_SORT.d : (kk==='name'||kk==='grp' ? 1 : -1)}; renderSector(); });
   tb.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => { SEC_SEL = tr.dataset.c; renderSector(); });
-  renderLeadTheme();
+  renderLeadTheme('leadThemeCard', 'lead_theme.json', false);
   renderRsCard('krRs', d.rows, SEC_SEL, (c, scroll) => { if (c) SEC_SEL = c; renderSector();
     if (scroll) document.getElementById('secChartCard').scrollIntoView({behavior:'smooth', block:'start'}); });
   if (!SEC_SEL || !d.rows.some(r => r.code === SEC_SEL)) SEC_SEL = ([...d.rows].filter(r => r.rs_adj != null && !r.dup).sort((a,b) => b.rs_adj - a.rs_adj)[0] || rows[0] || {}).code;
@@ -2988,6 +2997,7 @@ async function renderUsSector(){
   const heat = v => v == null ? '—' : '<b style="color:'+(v>=100?'#dc2626':v>=70?'#F57C00':'var(--ink-2)')+'">'+v.toFixed(0)+'</b>';
   const al = r => r.full_al ? '<span title="가격 > 4주 > 13주 > 26주 > 52주선, '+r.full_al_s+'부터">🔥완전 '+r.full_al_n+'일</span>'
                  : r.ma_al ? '<span title="4주 > 13주 > 26주 > 52주선, '+r.ma_al_s+'부터">📈이평 '+r.ma_al_n+'일</span>' : '<span class="mut">—</span>';
+  renderLeadTheme('usThemeCard', 'us_lead_theme.json', true);
   document.getElementById('usRsNote').textContent = '기준 '+d.asof+' (미국 종가)';
   renderRsCard('usRs', d.rows, USSEC_SEL, (c, scroll) => { if (c) USSEC_SEL = c; renderUsSector();
     if (scroll) document.getElementById('usSecChartCard').scrollIntoView({behavior:'smooth', block:'start'}); });
