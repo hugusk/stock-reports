@@ -239,6 +239,8 @@ body.embed .wrap { padding-top:8px; }
   <div class="kpis" id="kpis"></div>
 
   <div class="view" id="view-heatmap">
+    <div id="macroBox" style="display:none"></div>
+    <div id="hmMain">
     <div class="card" id="mfngCard">
       <h3 style="margin:0;font-size:15px">시장 F&G <span id="mfngMkt" class="mfng-badge"></span> <span style="font-weight:400;font-size:12px;color:var(--ink-3)">지수 단위 공포·탐욕 지수 — 자체 산출 (종목별 F&G시그널 탭과 별개)</span></h3>
       <div class="chips" id="mfngChips" style="margin:8px 0 0">
@@ -267,6 +269,23 @@ body.embed .wrap { padding-top:8px; }
         <span class="hm-legend"><span id="hmLo"></span><span class="grad" id="hmGrad"></span><span id="hmHi"></span></span>
       </div>
       <div id="heatmap"></div>
+    </div>
+    <div id="hmPerf" style="margin-top:14px">
+    <h2 class="sec">섹터 퍼포먼스 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">(시가총액 가중)</span>
+      <span class="legend">
+        <span class="key"><span class="sw" style="background:var(--up)"></span>상승</span>
+        <span class="key"><span class="sw" style="background:var(--down)"></span>하락</span>
+      </span>
+    </h2>
+    <p class="sec-note" id="perfNote">막대를 클릭하면 스크리너가 해당 섹터로 필터링됩니다.</p>
+    <div class="charts-grid" id="perfCharts"></div>
+  </div>
+
+    <div id="hmSpectrum" style="margin-top:14px">
+    <h2 class="sec">스펙트럼 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">섹터 × 기간 수익률 매트릭스 (시가총액 가중)</span></h2>
+    <div class="card gtable-scroll"><table class="spectrum" id="spectrum"></table></div>
+  </div>
+
     </div>
   </div>
 
@@ -389,22 +408,6 @@ body.embed .wrap { padding-top:8px; }
   <div class="view" id="view-dashboard">
     <div class="kpis" id="dashKpis"></div>
     <div class="dash-cards" id="dashCards"></div>
-  </div>
-
-  <div class="view" id="view-perf">
-    <h2 class="sec">섹터 퍼포먼스 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">(시가총액 가중)</span>
-      <span class="legend">
-        <span class="key"><span class="sw" style="background:var(--up)"></span>상승</span>
-        <span class="key"><span class="sw" style="background:var(--down)"></span>하락</span>
-      </span>
-    </h2>
-    <p class="sec-note">막대를 클릭하면 스크리너가 해당 섹터로 필터링됩니다.</p>
-    <div class="charts-grid" id="perfCharts"></div>
-  </div>
-
-  <div class="view" id="view-spectrum">
-    <h2 class="sec">스펙트럼 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">섹터 × 기간 수익률 매트릭스 (시가총액 가중)</span></h2>
-    <div class="card gtable-scroll"><table class="spectrum" id="spectrum"></table></div>
   </div>
 
   <div class="view" id="view-eps">
@@ -722,7 +725,9 @@ let DATA = {"updated": "2026-10-06 10:43", "investor_dd": "20261002", "bench": {
 const _q = new URLSearchParams(location.search);
 if (_q.has('embed')) document.body.classList.add('embed');   // ETF 트래커 iframe 임베드 시 자체 헤더 숨김
 let MARKET = _q.get('market') === 'KOSDAQ' ? 'KOSDAQ' : 'KOSPI';
-let VIEW = ['dashboard','heatmap','sector','rs','bottom','perf','spectrum','eps','valuation','screener'].includes(_q.get('view')) ? _q.get('view') : 'dashboard';
+// 퍼포먼스·스펙트럼은 히트맵 탭 안으로 합쳤다(2026-10-06) — 예전 링크(?view=perf|spectrum)는 히트맵으로
+let VIEW = ['perf','spectrum'].includes(_q.get('view')) ? 'heatmap'
+  : ['dashboard','heatmap','sector','rs','bottom','eps','valuation','screener'].includes(_q.get('view')) ? _q.get('view') : 'dashboard';
 let HM_TF = 'chg';
 
 const TF = [
@@ -732,8 +737,7 @@ const TF = [
 const VIEWS = [
   {k:'dashboard', l:'대시보드'},
   {k:'heatmap', l:'히트맵'}, {k:'sector', l:'업종지수'}, {k:'rs', l:'Pulse RS 상위'}, {k:'bottom', l:'F&G시그널'},
-  {k:'perf', l:'퍼포먼스'},
-  {k:'spectrum', l:'스펙트럼'}, {k:'eps', l:'EPS변동'}, {k:'valuation', l:'밸류에이션'}, {k:'screener', l:'스크리너'},
+  {k:'eps', l:'EPS변동'}, {k:'valuation', l:'밸류에이션'}, {k:'screener', l:'스크리너'},
 ];
 
 /* ── 테마 ── */
@@ -813,10 +817,10 @@ function renderTabs(){
     mt.appendChild(b);
   });
   if (VIEW === 'heatmap'){                      // 미국 지수 — 히트맵 탭에만 (2026-10-04)
-    [['SPX','S&P500'],['NDX','Nasdaq100']].forEach(([k, nm]) => {
+    [['SPX','S&P500'],['NDX','Nasdaq100'],['MACRO','Macro']].forEach(([k, nm]) => {
       const b = document.createElement('button');
       b.textContent = nm; b.className = US_HM === k ? 'on' : '';
-      b.onclick = async () => { US_HM = k; MFNG_MKT = k; await loadUsHm(); renderAll(); };
+      b.onclick = async () => { US_HM = k; if (k !== 'MACRO'){ MFNG_MKT = k; await loadUsHm(); } renderAll(); };
       mt.appendChild(b);
     });
   }
@@ -839,7 +843,7 @@ function renderTabs(){
 }
 
 function renderKpis(){
-  if (VIEW === 'heatmap' && US_HM && USHM){
+  if (VIEW === 'heatmap' && USMK() && USHM){
     const st = USHM.markets[US_HM].stocks, ups = st.filter(s => s.chg > 0).length, downs = st.filter(s => s.chg < 0).length;
     const capSum = st.reduce((a,s) => a + (s.cap||0), 0), wchg = st.reduce((a,s) => a + (s.chg||0)*(s.cap||0), 0) / (capSum||1);
     document.getElementById('kpis').innerHTML =
@@ -903,7 +907,17 @@ function squarify(items, x, y, w, h){
 /* ── 시장(지수) F&G 카드 — market_fng.json (kr_screener/market_fng.py). 종목별 F&G(bottom_rebound)와 별개 ── */
 let MFNG_OSC_RANGE = null;
 let MFNG_MKT = null;
-let US_HM = null, USHM = null;     // 히트맵 탭의 미국 지수 선택(SPX·NDX) · us_heatmap.json (data_collector/us_heatmap)
+let US_HM = null, USHM = null;
+const USMK = () => US_HM === 'SPX' || US_HM === 'NDX';     // 미국 지수 히트맵 선택 중(Macro 제외)
+function gotoMacro(){ VIEW = 'heatmap'; US_HM = 'MACRO'; renderAll(); }
+async function renderMacro(){
+  const box = document.getElementById('macroBox');
+  const q = await loadUsLiq();
+  if (!q || !q.summary){ box.innerHTML = '<div class="card"><div class="sec-note">유동성 데이터가 아직 없습니다.</div></div>'; return; }
+  box.innerHTML = macroPanel(q);
+  drawUsLiqChart(q, 'macro');
+  const uf = await loadUsFlow(); if (uf) drawUsFlowAgg(uf);
+}     // 히트맵 탭의 미국 지수 선택(SPX·NDX) · us_heatmap.json (data_collector/us_heatmap)
 async function loadUsHm(){
   if (USHM !== null) return USHM;
   try { const r = await fetch('us_heatmap.json', {cache:'no-cache'}); USHM = r.ok ? await r.json() : false; } catch(e){ USHM = false; }
@@ -1163,7 +1177,7 @@ function renderHeatmap(){
   document.getElementById('hmLo').textContent = '-' + tf.s + '%';
   document.getElementById('hmHi').textContent = '+' + tf.s + '%';
 
-  const US = US_HM && USHM;
+  const US = USMK() && USHM;
   const stocks = US ? USHM.markets[US_HM].stocks : DATA.markets[MARKET].stocks;
   const capFmt = US ? fmtUsd : fmtCap;
   const bySec = {};
@@ -1216,11 +1230,23 @@ function renderHeatmap(){
   });
 }
 
-/* ── 퍼포먼스 바 차트 ── */
+/* ── 퍼포먼스 바 차트 (히트맵 탭 안, 2026-10-06) ── */
+// 섹터 그룹 — 국내는 서버 집계(groups.perf), 미국은 us_heatmap 종목을 섹터별 시총 가중으로 브라우저에서 집계
+function hmGroups(){
+  if (!(USMK() && USHM)) return DATA.markets[MARKET].groups.perf;
+  const by = {};
+  USHM.markets[US_HM].stocks.forEach(s => { if (s.cap) (by[s.sector] = by[s.sector] || []).push(s); });
+  return Object.entries(by).map(([sec, arr]) => { const g = {sector:sec, count:arr.length};
+    TF.forEach(tf => { const ok = arr.filter(s => s[tf.k] != null), w = ok.reduce((a,s) => a + s.cap, 0);
+      g[tf.k] = w ? ok.reduce((a,s) => a + s[tf.k]*s.cap, 0) / w : null; });
+    return g; });
+}
 function renderPerf(){
   const wrap = document.getElementById('perfCharts');
   wrap.innerHTML = '';
-  const groups = DATA.markets[MARKET].groups.perf;
+  const groups = hmGroups();
+  document.getElementById('perfNote').textContent = USMK() ? (US_HM === 'SPX' ? 'S&P500' : 'Nasdaq100')+' 구성 종목을 GICS 섹터로 묶은 시가총액 가중 수익률 (Finviz Groups 방식) · 미국 종가 기준'
+    : '막대를 클릭하면 스크리너가 해당 섹터로 필터링됩니다.';
   TF.forEach(tf => {
     const rows = groups.map(gr => ({name: gr.sector, v: gr[tf.k]}))
       .filter(r => r.v != null).sort((a,b) => b.v - a.v);
@@ -1238,7 +1264,7 @@ function renderPerf(){
         '" style="width:' + w.toFixed(1) + '%"></span><span class="bar-val">' + fmtPct(r.v) + '</span></span>';
       row.onmousemove = e => showTip(e, '<b>' + r.name + '</b> · ' + tf.l + '<br>' + fmtPct(r.v));
       row.onmouseleave = hideTip;
-      row.onclick = () => { VIEW = 'screener'; renderAll();
+      if (!USMK()) row.onclick = () => { VIEW = 'screener'; renderAll();
         document.getElementById('fSector').value = r.name; renderTable(); };
       card.appendChild(row);
     });
@@ -1252,11 +1278,11 @@ function gotoScreenerSector(sec){
   document.getElementById('fSector').value = sec; renderTable();
 }
 function renderSpectrum(){
-  const groups = [...DATA.markets[MARKET].groups.perf].sort((a,b) => (b.chg??-99) - (a.chg??-99));
+  const groups = [...hmGroups()].sort((a,b) => (b.chg??-99) - (a.chg??-99));
   const tbl = document.getElementById('spectrum');
   let html = '<thead><tr><th class="l">섹터</th>' + TF.map(t => '<th>' + t.l + '</th>').join('') + '</tr></thead><tbody>';
   groups.forEach(gr => {
-    html += '<tr style="cursor:pointer" onclick="gotoScreenerSector(\'' + gr.sector + '\')">' +
+    html += (USMK() ? '<tr>' : '<tr style="cursor:pointer" onclick="gotoScreenerSector(\'' + gr.sector + '\')">') +
       '<td class="lab">' + gr.sector + ' <span style="color:var(--ink-3);font-size:11px">' + gr.count + '</span></td>';
     TF.forEach(tf => {
       const v = gr[tf.k];
@@ -1781,7 +1807,7 @@ async function loadUsLiq(){
   try { const r = await fetch('us_liquidity.json', {cache:'no-cache'}); US_LIQ = r.ok ? await r.json() : false; } catch(e){ US_LIQ = false; }
   return US_LIQ;
 }
-function usLiqCard(q){
+function _liqHelpers(q){
   const tone = s => /🔴|⚠️|★☆☆☆☆|★★☆☆☆|긴축|부정|위축|비우호/.test(s) ? '#dc2626' : /🟠|🟡|주의|★★★☆☆|혼조|관찰/.test(s) ? '#d97706'
                   : /🟢|양호|★★★★|우호|긍정|확장|안정/.test(s) ? '#16a34a' : 'var(--ink-2)';
   // 5단계 신호등 — 1 빨강 · 2 주황 · 3 노랑 · 4 연두 · 5 초록, 해당 단계 원만 켜고 나머지는 흐리게(2026-10-04 사용자 요청)
@@ -1794,8 +1820,13 @@ function usLiqCard(q){
   const li = s => '<li>'+esc(s)+'</li>';
   const n = (v, u, p) => v == null ? '—' : (p && v > 0 ? '+' : '') + v + (u || '');
   const R = q.rates, C = q.chg4w, F = q.fed, K = q.credit, L = q.labor, Y = q.carry, Y4 = q.carry_2024, S = q.shock;
-  const det = (title, body) => '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600">'+title+'</summary>'+
+  const det = (title, body) => '<details open style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600">'+title+'</summary>'+
     '<div style="font-size:12.5px;line-height:1.7;margin:4px 0 0 4px">'+body+'</div></details>';
+  return {tone, LV, dots, row, sg, li, n, R, C, F, K, L, Y, Y4, S, det};
+}
+// 대시보드엔 요약표 + 상세 차트만(2026-10-06 사용자 요청 — 너무 번잡). 이력표·세부 내용은 히트맵 탭 'Macro'로
+function usLiqCard(q){
+  const {tone, LV, dots, row, sg, li, n, R, C, F, K, L, Y, Y4, S, det} = _liqHelpers(q);
   return '<div class="dcard wide" id="usLiqCard"><h3>미국 매크로 · 시장 유동성'+
       '<span class="mut" style="font-weight:400;font-size:12px">FRED 공개 지표 · 자료 최신 '+esc(q.asof)+' (주간·월간 혼합) · 갱신 '+esc(q.updated)+' · 하루 1회</span></h3>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;margin-bottom:6px;font-variant-numeric:tabular-nums">'+
@@ -1805,9 +1836,16 @@ function usLiqCard(q){
     '<div style="overflow-x:auto"><table class="data" style="font-size:12.5px"><tbody>'+q.summary.map(row).join('')+'</tbody></table></div>'+
     '<div style="font-size:12.5px;margin-top:6px;color:var(--ink-1)">자산별 해석 · '+q.assets.map(([k, v]) =>
       '<b>'+esc(k)+'</b> <span style="color:var(--ink-1)">'+esc(v)+'</span>').join(' · ')+'</div>'+
-    (q.hist && q.hist.weeks ? '<div style="font-size:13px;font-weight:600;margin:10px 0 4px">신호등 이력 <span class="mut" style="font-weight:400;font-size:11.5px">최근 '+q.hist.weeks.length+'주 · 매주 금요일, 그 날까지의 데이터로 다시 판정 · 줄(또는 위 표의 줄)을 누르면 아래에 상세 차트</span></div>'+
-      '<div id="usLiqGrid" style="overflow-x:auto"></div>'+
-      '<div id="usLiqDetHead" style="font-size:13px;margin:10px 0 2px"></div><div id="usLiqChart" style="height:230px;margin:2px 0"></div>'+
+    '<div id="usLiqDetHead" style="font-size:13px;margin:10px 0 2px"></div><div id="usLiqChart" style="height:230px;margin:2px 0"></div>'+
+    '<div class="sec-note" style="margin-top:6px">줄을 누르면 그 지표의 차트 · 신호등 이력과 세부 내용은 <a href="#" onclick="gotoMacro();return false">히트맵 → Macro</a></div></div>';
+}
+function macroPanel(q){
+  const {tone, LV, dots, row, sg, li, n, R, C, F, K, L, Y, Y4, S, det} = _liqHelpers(q);
+  return '<div class="card" id="macroCard"><h3 style="margin:0 0 6px;font-size:15px">미국 매크로 · 시장 유동성 — 신호등 이력과 세부 내용'+
+      '<span class="mut" style="font-weight:400;font-size:12px"> FRED 공개 지표 · 자료 최신 '+esc(q.asof)+' · 갱신 '+esc(q.updated)+'</span></h3>'+
+    (q.hist && q.hist.weeks ? '<div style="font-size:13px;font-weight:600;margin:6px 0 4px">신호등 이력 <span class="mut" style="font-weight:400;font-size:11.5px">최근 '+q.hist.weeks.length+'주 · 매주 금요일, 그 날까지의 데이터로 다시 판정 · 줄을 누르면 아래에 상세 차트</span></div>'+
+      '<div id="macroGrid" style="overflow-x:auto"></div>'+
+      '<div id="macroDetHead" style="font-size:13px;margin:10px 0 2px"></div><div id="macroChart" style="height:260px;margin:2px 0"></div>'+
       '<div class="mut" style="font-size:11px">아래 칸 = 그 주의 단계(빨강~초록) · FRED 과거값은 나중에 수정된 최신본이라(고용·M2 등) 그 당시 실제로 보였던 판정과 조금 다를 수 있음</div>' : '')+
     det('금리 · Fed · 은행 신용 (현재 / 최근 4주 변화)',
       '10Y 실질 '+n(R.Real10Y,'%')+' ('+n(C.Real10Y,'%p',1)+') · 2Y '+n(R.Treasury2Y,'%')+' ('+n(C.Treasury2Y,'%p',1)+') · 10Y '+n(R.Treasury10Y,'%')+' ('+n(C.Treasury10Y,'%p',1)+
@@ -1831,8 +1869,8 @@ function usLiqCard(q){
         '<br><span class="mut">단계: 10Y−3M −0.5 미만 빨강 · 0 미만 주황 · 0~0.5 노랑 · 0.5~1.0 연두 · 1.0 이상 초록 (최근 1년 안에 역전했다 풀렸으면 노랑까지만)</span>' : '')+
       (q.pcr && q.pcr.hist && q.pcr.hist.length ? '<br>CBOE 주식 Put/Call 5일평균 <b>'+q.pcr.avg5+'</b> · 최근 5일 '+
         q.pcr.hist.slice(-5).map(h => h[0].slice(5)+' '+h[1].toFixed(2)).join(' · ')+
-        '<br><span class="mut">US 단계: 0.95 이상 빨강(극단 공포) · 0.75~0.95 노랑(공포) · 0.55~0.75 초록(정상) · 0.45~0.55 연두(낙관) · 0.45 미만 주황(극단 낙관) — 양 끝이 위험, 역발상으로도 쓰는 지표</span>' : '')+
-      '<br><span class="mut">KR Put/Call = KOSPI200 옵션(주간) 풋 거래량 ÷ 콜 거래량, 금융위 공개 원장 · 국내는 평소 0.9 안팎이라 기준을 국내 이력 분포로 잡음: 상위 10% 빨강 · 상위 30% 노랑 · 가운데 초록 · 하위 30% 연두 · 하위 10% 주황</span>') : '')+
+        '<br><span class="mut">단계(역발상 순서): 빨강 극단적 낙관 · 주황 낙관 · 노랑 중립 · 연두 공포 · 초록 극단적 공포 — 다들 낙관할 때 경계, 공포가 극단일 때 오히려 바닥 근처였다는 뜻 · US 기준 0.45 · 0.55 · 0.75 · 0.95</span>' : '')+
+      '<br><span class="mut">KR Put/Call = KOSPI200 옵션(월물+위클리) 풋 거래량 ÷ 콜 거래량, 금융위 공개 원장 · 국내는 평소 0.9 안팎이라 기준을 국내 이력 분포로: 하위 10% 극단적 낙관 · 하위 30% 낙관 · 가운데 중립 · 상위 30% 공포 · 상위 10% 극단적 공포</span>') : '')+
     '<details open style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600">미국 ETF → 한국 주식 자금 (주간·월간 누적)</summary>'+
       '<div class="chips" id="usFlowAggChips" style="margin:6px 0 0"><span class="chip on" data-p="w">주간</span><span class="chip" data-p="m">월간</span></div>'+
       '<div id="usFlowAgg" style="height:200px;margin:6px 0 2px"></div>'+
@@ -1866,8 +1904,9 @@ function drawUsFlowAgg(u){
 }
 let LIQ_SEL = '기존 유동성';
 const LIQ_LV = ['#dc2626','#f97316','#eab308','#84cc16','#16a34a'];
-function drawLiqGrid(q){
-  const el = document.getElementById('usLiqGrid'); if (!el || !q.hist) return;
+const LIQ_CH = {};
+function drawLiqGrid(q, pre){
+  const el = document.getElementById(pre+'Grid'); if (!el || !q.hist) return;
   const W = q.hist.weeks, names = q.summary.map(r => r[0]);
   const mon = W.map((d, i) => (i === 0 || d.slice(5,7) !== W[i-1].slice(5,7)) ? (+d.slice(5,7))+'월' : '');
   const cols = 'grid-template-columns:150px repeat('+W.length+', minmax(7px,1fr))';
@@ -1877,32 +1916,34 @@ function drawLiqGrid(q){
       return '<div data-liq="'+esc(n)+'" style="display:grid;'+cols+';gap:1px;align-items:center;cursor:pointer;min-width:560px;padding:1px 0;'+
         (n === LIQ_SEL ? 'background:var(--hover-wash);' : '')+'"><span style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-1)">'+esc(n)+'</span>'+
         W.map((d, i) => '<span title="'+d+' · '+(lv[i] ? lv[i]+'단계' : '데이터 없음')+'" style="height:12px;border-radius:2px;background:'+(lv[i] ? LIQ_LV[lv[i]-1] : 'var(--grid)')+'"></span>').join('')+'</div>'; }).join('');
-  document.querySelectorAll('#usLiqCard [data-liq]').forEach(r => r.onclick = () => { LIQ_SEL = r.dataset.liq; drawUsLiqChart(q); });
 }
-function drawUsLiqChart(q){
-  if (q.hist){
-    drawLiqGrid(q);              // 탭을 오갈 때마다 카드가 새로 그려지므로 이력표도 매번 다시 그린다(같은 데이터라고 건너뛰면 빈칸이 됐다)
-    const el = document.getElementById('usLiqChart'); if (!el) return;
-    if (US_LIQ_CHART){ try { US_LIQ_CHART.remove(); } catch(e){} US_LIQ_CHART = null; }
-    el.innerHTML = '';
-    const C = (q.charts || {})[LIQ_SEL], lv = q.hist.rows[LIQ_SEL] || [];
-    const row = q.summary.find(r => r[0] === LIQ_SEL) || [];
-    document.getElementById('usLiqDetHead').innerHTML = '<b>'+esc(LIQ_SEL)+'</b> <span class="mut" style="font-size:12px">'+esc(row[1]||'')+'</span>';
-    const ch = US_LIQ_CHART = LWC.createChart(el, Object.assign(smChartOpts(), {leftPriceScale:{visible:true, borderColor:cssVar('--grid')}}));
-    const pal = ['#1e88e5', '#F57C00', '#8e44ad', '#16a34a'];
-    let first = null;
-    ((C && C.s) || []).forEach((s, i) => { const ser = ch.addSeries(LWC.LineSeries, {color:pal[i % pal.length], lineWidth:i ? 1.4 : 2,
-        priceScaleId:s.ax === 'r' ? 'right' : 'left', priceLineVisible:false, title:s.name});
-      ser.setData(s.d.map(([d, v]) => ({time:d, value:v}))); if (!first && s.ax !== 'r') first = ser; });
-    if (first) (C.lines || []).forEach(([v, nm]) => first.createPriceLine({price:v, color:cssVar('--ink-3'), lineWidth:1, lineStyle:2, axisLabelVisible:false, title:nm}));
-    const lvSer = ch.addSeries(LWC.HistogramSeries, {priceLineVisible:false, lastValueVisible:false, title:'단계'}, 1);
-    lvSer.setData(q.hist.weeks.map((d, i) => lv[i] ? {time:d, value:lv[i], color:LIQ_LV[lv[i]-1]} : null).filter(Boolean));
-    try { ch.panes()[1].setHeight(50); } catch(e){}
-    if (!C) document.getElementById('usLiqDetHead').innerHTML += ' <span class="mut" style="font-size:11px">(재료 차트 없음 — 다른 줄을 합친 판정이라 단계 이력만)</span>';
-    ch.timeScale().fitContent();
-    return;
-  }
-  return drawUsLiqChartOld(q);
+// pre = 'usLiq'(대시보드: 요약표 줄 클릭) / 'macro'(히트맵 Macro: 이력표 줄 클릭)
+function drawUsLiqChart(q, pre){
+  pre = pre || 'usLiq';
+  if (!q.hist) return;
+  if (pre === 'macro') drawLiqGrid(q, pre);       // 탭을 오갈 때마다 다시 그린다(건너뛰면 빈칸이 됐다)
+  const host = pre === 'macro' ? document.getElementById('macroCard') : document.getElementById('usLiqCard');
+  if (host) host.querySelectorAll('[data-liq]').forEach(r => r.onclick = () => { LIQ_SEL = r.dataset.liq; drawUsLiqChart(q, pre); });
+  const el = document.getElementById(pre+'Chart'); if (!el) return;
+  if (LIQ_CH[pre]){ try { LIQ_CH[pre].remove(); } catch(e){} LIQ_CH[pre] = null; }
+  el.innerHTML = '';
+  const C = (q.charts || {})[LIQ_SEL], lv = q.hist.rows[LIQ_SEL] || [];
+  const row = q.summary.find(r => r[0] === LIQ_SEL) || [];
+  const hd = document.getElementById(pre+'DetHead');
+  hd.innerHTML = '<b>'+esc(LIQ_SEL)+'</b> <span class="mut" style="font-size:12px">'+esc(row[1]||'')+'</span>';
+  const ch = LIQ_CH[pre] = LWC.createChart(el, Object.assign(smChartOpts(), {leftPriceScale:{visible:true, borderColor:cssVar('--grid')}}));
+  const pal = ['#1e88e5', '#F57C00', '#8e44ad', '#16a34a'];
+  let first = null;
+  ((C && C.s) || []).forEach((s, i) => { const ser = ch.addSeries(LWC.LineSeries, {color:pal[i % pal.length], lineWidth:i ? 1.4 : 2,
+      priceScaleId:s.ax === 'r' ? 'right' : 'left', priceLineVisible:false, title:s.name});
+    ser.setData(s.d.map(([d, v]) => ({time:d, value:v}))); if (!first && s.ax !== 'r') first = ser; });
+  if (first) (C.lines || []).forEach(([v, nm]) => first.createPriceLine({price:v, color:cssVar('--ink-3'), lineWidth:1, lineStyle:2, axisLabelVisible:false, title:nm}));
+  const lvSer = ch.addSeries(LWC.HistogramSeries, {priceLineVisible:false, lastValueVisible:false, title:'단계'}, 1);
+  lvSer.setData(q.hist.weeks.map((d, i) => lv[i] ? {time:d, value:lv[i], color:LIQ_LV[lv[i]-1]} : null).filter(Boolean));
+  try { ch.panes()[1].setHeight(50); } catch(e){}
+  if (!C) hd.innerHTML += ' <span class="mut" style="font-size:11px">(재료 차트 없음 — 다른 줄을 합친 판정이라 단계 이력만)</span>';
+  ch.timeScale().fitContent();
+  if (host) host.querySelectorAll('tr[data-liq]').forEach(r => r.style.background = r.dataset.liq === LIQ_SEL ? 'var(--hover-wash)' : '');
 }
 function drawUsLiqChartOld(q){
   const el = document.getElementById('usLiqChart');
@@ -1923,8 +1964,7 @@ async function renderDashboard(){
   renderDashKpis();
   host.innerHTML = '';
   const lq = await loadUsLiq();                                 // 미국 매크로·유동성 판정 (맨 위, 2026-10-04)
-  if (lq && lq.summary) { host.insertAdjacentHTML('beforeend', usLiqCard(lq)); drawUsLiqChart(lq);
-    const uf0 = await loadUsFlow(); if (uf0) drawUsFlowAgg(uf0); }
+  if (lq && lq.summary) { host.insertAdjacentHTML('beforeend', usLiqCard(lq)); drawUsLiqChart(lq, 'usLiq'); }
   // 미국 ETF → 국내 유출입은 단독 카드에서 빼고 유동성 카드 15번째 줄 + 주간·월간 누적 차트로 옮겼다(2026-10-06 사용자 결정 —
   // 일별 숫자는 이미 일어난 일을 따라가는 후행 지표라 매매 신호로는 쓸모가 없었다)
   host.insertAdjacentHTML('beforeend', investorFlowCard(d));   // 상단 정보 카드 (필터 무관)
@@ -3215,10 +3255,14 @@ function renderAll(){
   if (VIEW === 'sector'){ document.getElementById('kpis').style.display='none'; renderSector(); return; }
   renderKpis();
   initFilters();
-  if (VIEW === 'heatmap'){ renderHeatmap(); renderMarketFng(); }
+  if (VIEW === 'heatmap'){
+    const mac = US_HM === 'MACRO';
+    document.getElementById('macroBox').style.display = mac ? '' : 'none';
+    document.getElementById('hmMain').style.display = mac ? 'none' : '';
+    if (mac){ document.getElementById('kpis').style.display = 'none'; renderMacro(); }
+    else { renderHeatmap(); renderMarketFng(); renderPerf(); renderSpectrum(); }
+  }
   if (VIEW === 'rs') renderRs();
-  if (VIEW === 'perf') renderPerf();
-  if (VIEW === 'spectrum') renderSpectrum();
   if (VIEW === 'eps') renderEps();
   if (VIEW === 'valuation') renderValuation();
   if (VIEW === 'screener') renderTable();
