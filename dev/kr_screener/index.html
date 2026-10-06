@@ -281,7 +281,8 @@ body.embed .wrap { padding-top:8px; }
       <h3 style="margin:0 0 8px;font-size:14px">RS 상위 <span id="usRsCnt"></span> <span class="mut" style="font-weight:400;font-size:12px" id="usRsNote"></span></h3>
       <div class="chips" id="usRsKey">
         <span style="font-size:11px;color:var(--ink-3);align-self:center">기준</span>
-        <span class="chip on" data-k="rs_adj">국내식 RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+        <span class="chip on" data-k="apex" title="Pulse RS 순위와 Mansfield RS 순위의 평균">Apex RS</span><span class="chip" data-k="rs_adj">Pulse RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+        <span class="mut" style="font-size:11.5px;align-self:center" data-desc></span>
       </div>
       <div class="chips" id="usRsChips" style="margin-top:6px">
         <span class="chip on" data-f="all">전체</span>
@@ -294,7 +295,7 @@ body.embed .wrap { padding-top:8px; }
         <span class="chip on" data-dup="1">유사지수 묶기</span>
       </div>
       <div class="rank" id="usRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
-      <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (SPY 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
+      <p class="sec-note" style="margin:6px 0 0"><b>Apex RS</b> = Pulse RS 순위와 Mansfield RS 순위의 평균(0~100, 이 목록 안 상대 순위 — 둘 다 0 이상만 '전체'에 표시) · <b>Pulse RS</b>(우리가 만든 지표) = (SPY 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
         <b>Mansfield RS</b> = (SPY 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20<br><b>🔥 가격 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 가격 눌림</b> = 어제 가격 F&amp;G가 5일 최저·EMA20 아래였고 오늘 반등 · <b>⚠️ 수급 이탈</b> = 값은 올랐는데 외국인+기관 수급 F&amp;G가 사흘 연속 내려 5일 고점보다 10점 이상 빠짐(국내 지수만)</p>
       </div>
       <div class="card" id="usSecChartCard">
@@ -316,7 +317,8 @@ body.embed .wrap { padding-top:8px; }
       <h3 style="margin:0 0 8px;font-size:14px">RS 상위 <span id="krRsCnt"></span> <span class="mut" style="font-weight:400;font-size:12px" id="krRsNote"></span></h3>
       <div class="chips" id="krRsKey">
         <span style="font-size:11px;color:var(--ink-3);align-self:center">기준</span>
-        <span class="chip on" data-k="rs_adj">국내식 RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+        <span class="chip on" data-k="apex" title="Pulse RS 순위와 Mansfield RS 순위의 평균">Apex RS</span><span class="chip" data-k="rs_adj">Pulse RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+        <span class="mut" style="font-size:11.5px;align-self:center" data-desc></span>
       </div>
       <div class="chips" id="krRsChips" style="margin-top:6px">
         <span class="chip on" data-f="all">전체</span>
@@ -329,7 +331,7 @@ body.embed .wrap { padding-top:8px; }
         <span class="chip on" data-dup="1">유사지수 묶기</span>
       </div>
       <div class="rank" id="krRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
-      <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
+      <p class="sec-note" style="margin:6px 0 0"><b>Apex RS</b> = Pulse RS 순위와 Mansfield RS 순위의 평균(0~100, 이 목록 안 상대 순위 — 둘 다 0 이상만 '전체'에 표시) · <b>Pulse RS</b>(우리가 만든 지표) = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
         <b>Mansfield RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20<br><b>🔥 가격 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 가격 눌림</b> = 어제 가격 F&amp;G가 5일 최저·EMA20 아래였고 오늘 반등 · <b>⚠️ 수급 이탈</b> = 값은 올랐는데 외국인+기관 수급 F&amp;G가 사흘 연속 내려 5일 고점보다 10점 이상 빠짐(국내 지수만)</p>
     </div>
     <div class="card" id="secChartCard">
@@ -2880,7 +2882,17 @@ function _secGap(r){                 // 수급 F&G의 EMA20 대비 괴리(%) —
   return e ? (r.fs[r.fs.length-1] - e) / e * 100 : null;
 }
 let SEC_REGION = 'kr';
-const RSC = {krRs:{k:'rs_adj', f:'all', dup:true}, usRs:{k:'rs_adj', f:'all', dup:true}};
+const RSC = {krRs:{k:'apex', f:'all', dup:true}, usRs:{k:'apex', f:'all', dup:true}};
+// 기준 3가지 (2026-10-06 사용자 결정) — 이름: Pulse RS(국내식, 우리가 만든 지표) · Mansfield RS · Apex RS(둘의 순위 평균)
+const RS_DESC = {apex:'두 기준의 순위 평균 — 꾸준한 주도 업종 중 요즘 더 치고 나가는 곳',
+                 rs_adj:'막 살아나는 주도 업종을 빨리 잡고 싶을 때', ms:'주도 업종을 꾸준히 확인하고 싶을 때'};
+const RS_NAME = {apex:'Apex', rs_adj:'Pulse', ms:'Mansfield'};
+function addApex(rows){            // Pulse·Mansfield 순위(%)의 평균 × 100 — 둘 다 있는 지수만
+  const ok = rows.filter(r => r.rs_adj != null && r.ms != null), n = ok.length;
+  const pr = k => { const m = {}; [...ok].sort((a,b) => a[k] - b[k]).forEach((r,i) => m[r.code] = (i+1)/n); return m; };
+  const a = pr('rs_adj'), b = pr('ms');
+  rows.forEach(r => r.apex = (r.code in a) ? Math.round((a[r.code] + b[r.code]) / 2 * 1000) / 10 : null);
+}
 const _bdg = (txt, col, tip) => '<span title="'+tip+'" style="font-size:11px;border:1px solid '+col+';color:'+col+';border-radius:4px;padding:0 4px;margin-left:2px">'+txt+'</span>';
 // 배지 (2026-10-06 사용자 요청) — 가격 과열·가격 눌림은 가격만, 수급 이탈은 외국인+기관 수급 F&G(국내 지수만)
 const leadBadge = (b, r) => (b === 'hot' ? _bdg('🔥 가격 과열', '#dc2626', '30일선 대비 이격이 최근 1년 상위 3%')
@@ -2896,16 +2908,19 @@ function renderRsCard(pid, rows, sel, onPick){
       chips.querySelectorAll('.chip[data-f]').forEach(x => x.classList.toggle('on', x===ch)); onPick(null); });
     const dc = chips.querySelector('.chip[data-dup]'); dc.onclick = () => { st.dup = !st.dup; dc.classList.toggle('on', st.dup); onPick(null); };
   }
-  const K = st.k, MIN = K === 'ms' ? 0 : 1.0, KN = K === 'ms' ? 'Mansfield' : 'RS';
+  addApex(rows);
+  key.querySelector('[data-desc]').textContent = RS_DESC[st.k];
+  const K = st.k, KN = RS_NAME[K], MIN = K === 'ms' ? 0 : K === 'apex' ? 0 : 1.0;
   const base = rows.filter(r => r[K] != null && (!st.dup || !r.dup));
-  let rs = base.filter(r => r[K] >= MIN);
+  let rs = K === 'apex' ? base.filter(r => r.rs_adj >= 0 && r.ms >= 0) : base.filter(r => r[K] >= MIN);
   const jump = st.f === 'jump';
   if (['ma5','ma10','ma20','ma50'].includes(st.f)) rs = rs.filter(r => r[st.f]);
   if (jump) rs = base.filter(r => r.rs_dchg != null).sort((a,b) => b.rs_dchg - a.rs_dchg);
   else rs.sort((a,b) => b[K] - a[K]);
   document.getElementById(pid+'Cnt').innerHTML = jump ? '' :
-    '<b>'+rs.length+'</b>개 <span class="mut" style="font-weight:400;font-size:12px">('+KN+' ≥ '+MIN.toFixed(1)+' · 대표 '+base.length+'개 중)</span>';
-  const fmt = v => (v>0?'+':'')+v.toFixed(K === 'ms' ? 1 : 2);
+    '<b>'+rs.length+'</b>개 <span class="mut" style="font-weight:400;font-size:12px">('+(K === 'apex' ? 'Pulse·Mansfield 둘 다 0 이상' : KN+' ≥ '+MIN.toFixed(1))+' · 대표 '+base.length+'개 중)</span>';
+  const fmt = v => K === 'apex' ? v.toFixed(0) : (v>0?'+':'')+v.toFixed(K === 'ms' ? 1 : 2);
+  const both = r => (r.rs_adj != null ? 'Pulse '+(r.rs_adj>0?'+':'')+r.rs_adj.toFixed(2) : '')+(r.ms != null ? ' · Mansfield '+(r.ms>0?'+':'')+r.ms.toFixed(1) : '');
   const host = document.getElementById(pid+'List');
   host.innerHTML = (st.f === 'all' ? rs : rs.slice(0,20)).map((r,i) => {
     const f = (r.fs && r.fs.length ? r.fs : r.f) || [];
@@ -2914,14 +2929,13 @@ function renderRsCard(pid, rows, sel, onPick){
       '<span class="nm"><b>'+esc(r.name)+'</b>'+(st.dup && r.sim ? ' <span class="mut" style="font-size:11px">+'+r.sim+' 유사</span>' : '')+
         ' <span class="mut" style="font-size:11px">'+esc(r.grp)+'</span> '+leadBadge(r.badge, r)+'</span>'+
       '<span class="v" style="font-size:12px;white-space:nowrap">'+
-        (jump ? '⚡ <b style="color:var(--up-text)">'+(r.rs_dchg>0?'+':'')+r.rs_dchg.toFixed(2)+'</b> <span class="mut">(RS '+(r.rs_adj??0).toFixed(2)+')</span>'
+        (jump ? '⚡ <b style="color:var(--up-text)">'+(r.rs_dchg>0?'+':'')+r.rs_dchg.toFixed(2)+'</b> <span class="mut">(Pulse '+(r.rs_adj??0).toFixed(2)+')</span>'
               : KN+' <b style="color:var(--'+(r[K]>0?'up':'down')+'-text)">'+fmt(r[K])+'</b>'+
-                (K === 'ms' ? (r.rs_adj != null ? ' <span class="mut">(RS '+r.rs_adj.toFixed(2)+')</span>' : '')
-                            : (r.ms != null ? ' <span class="mut">(Mansfield '+(r.ms>0?'+':'')+r.ms.toFixed(1)+')</span>' : '')))+
+                ' <span class="mut">('+both(r)+')</span>')+
         (r.rs != null ? ' · 초과 '+(r.rs>0?'+':'')+r.rs.toFixed(1)+'%' : '')+
         ' · '+(r.rs_streak ? r.rs_streak+(r.rs_streak>=15?'일+':'일')+' 연속' : '연속 —')+
         ' · F&G'+(r.fs && r.fs.length ? '(수급) ' : ' ')+(f.length ? f[f.length-1].toFixed(1) : '<span class="mut">—</span>')+
-      '</span></div>'; }).join('') || '<div class="sec-note">'+(jump ? '전일 값이 쌓이면 표시됩니다.' : KN+' '+MIN.toFixed(1)+' 이상인 지수가 없습니다 — 주도 업종이 없는 장.')+'</div>';
+      '</span></div>'; }).join('') || '<div class="sec-note">'+(jump ? '전일 값이 쌓이면 표시됩니다.' : '조건에 맞는 지수가 없습니다 — 주도 업종이 없는 장.')+'</div>';
   host.querySelectorAll('.row[data-c]').forEach(el => el.onclick = () => onPick(el.dataset.c, true));
 }
 /* 주도 테마 — RS(Mansfield) 상위 30 ETF의 비중 상위 종목 겹침을 업종으로 묶음, 평소 출현율 보정 (kr_screener/lead_theme) */
@@ -2971,7 +2985,7 @@ async function renderSector(){
   const k = SEC_SORT.k, dir = SEC_SORT.d;
   rows.sort((a,b) => k === 'name' ? dir * a.name.localeCompare(b.name) : dir * ((a[k] ?? -1e9) - (b[k] ?? -1e9)));
   note.textContent = rows.length + '개 · 기준 ' + d.asof + (rows.some(r => r.prov) ? ' · 장중 잠정(현재가)' : '');
-  const cols = [['name','지수','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r60','3개월'],['rs_adj','RS'],['ms','Mansfield'],['fsl','F&G(수급)'],['gap','EMA20 괴리']];
+  const cols = [['name','지수','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r60','3개월'],['rs_adj','Pulse RS'],['ms','Mansfield'],['fsl','F&G(수급)'],['gap','EMA20 괴리']];
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+fmtPct(v)+'</span>';
   tb.innerHTML = '<thead><tr>' + cols.map(([c,l,al]) => '<th class="'+(al||'')+'" data-k="'+c+'">'+l+(SEC_SORT.k===c?(SEC_SORT.d>0?' ▲':' ▼'):'')+'</th>').join('') + '</tr></thead><tbody>' +
     rows.map(r => '<tr style="cursor:pointer'+(SEC_SEL===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
@@ -3013,7 +3027,7 @@ async function renderUsSector(){
   all.sort((a,b) => k === 'name' || k === 'grp' ? dir * String(a[k]).localeCompare(String(b[k])) : dir * ((a[k] ?? -1e9) - (b[k] ?? -1e9)));
   document.getElementById('usSecCnt').textContent = all.length + '개 · 갱신 ' + d.updated;
   const cols = [['name','ETF','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r126','6개월'],
-                ['rs_adj','RS'],['ms','Mansfield'],['heat','과열도'],['full_al_n','정배열']];
+                ['rs_adj','Pulse RS'],['ms','Mansfield'],['heat','과열도'],['full_al_n','정배열']];
   const tb = document.getElementById('usSecTable');
   tb.innerHTML = '<thead><tr>' + cols.map(([c,l,a]) => '<th class="'+(a||'')+'" data-k="'+c+'">'+l+(USSEC_SORT.k===c?(dir>0?' ▲':' ▼'):'')+'</th>').join('') + '</tr></thead><tbody>' +
     all.map(r => '<tr style="cursor:pointer'+(USSEC_SEL===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
@@ -3037,7 +3051,7 @@ function drawUsSectorChart(r){
   const t = x => x.slice(0,4)+'-'+x.slice(4,6)+'-'+x.slice(6);
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+(v>0?'+':'')+v.toFixed(2)+'%</span>';
   hd.innerHTML = '<b>'+esc(r.name)+'</b> <span class="mut">'+esc(r.grp)+'</span> · $'+fmtNum(r.c)+' '+pc(r.chg)+
-    ' · RS <b>'+(r.rs_adj==null?'—':r.rs_adj.toFixed(2))+'</b> · Mansfield '+(r.ms==null?'—':(r.ms>0?'+':'')+r.ms.toFixed(1))+' '+leadBadge(r.badge, r)+
+    ' · Pulse <b>'+(r.rs_adj==null?'—':r.rs_adj.toFixed(2))+'</b> · Mansfield '+(r.ms==null?'—':(r.ms>0?'+':'')+r.ms.toFixed(1))+' '+leadBadge(r.badge, r)+
     ' · 30일 이격 '+pc(r.gap30)+' / 97% 구간 '+(r.p97==null?'—':r.p97.toFixed(2)+'%')+' · 과열도 <b>'+(r.heat??'—')+'</b>'+
     (r.full_al ? ' · 🔥완전 정배열 '+r.full_al_s+'부터 '+r.full_al_n+'거래일' : r.ma_al ? ' · 📈이평 정배열 '+r.ma_al_s+'부터 '+r.ma_al_n+'거래일' : '');
   const ch = USSEC_CHART = LWC.createChart(el, smChartOpts());
