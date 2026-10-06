@@ -3050,6 +3050,23 @@ function renderRsCard(pid, rows, sel, onPick){
   host.querySelectorAll('.row[data-c]').forEach(el => el.onclick = () => onPick(el.dataset.c, true));
 }
 /* 주도 테마 — RS(Mansfield) 상위 30 ETF의 비중 상위 종목 겹침을 업종으로 묶음, 평소 출현율 보정 (kr_screener/lead_theme) */
+// ETF 구성종목 추이 팝업 — ETF 트래커 페이지를 ?trend=코드&embed=1 로 띄운다(로컬 서버는 '/', 공개 페이지는 '../etf_tracker/')
+function openEtfTrend(code){
+  let m = document.getElementById('etfTrendModal');
+  if (!m){
+    m = document.createElement('div'); m.id = 'etfTrendModal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    m.innerHTML = '<div style="position:relative;width:min(1100px,100%);height:min(88vh,900px);background:var(--surface-1);border-radius:10px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.4)">'+
+      '<button aria-label="닫기" style="position:absolute;top:6px;right:8px;z-index:2;border:0;background:var(--surface-2,#eee);color:var(--ink-1);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px">✕</button>'+
+      '<iframe style="width:100%;height:100%;border:0"></iframe></div>';
+    m.onclick = ev => { if (ev.target === m) m.style.display = 'none'; };
+    m.querySelector('button').onclick = () => m.style.display = 'none';
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape') m.style.display = 'none'; });
+    document.body.appendChild(m);
+  }
+  m.querySelector('iframe').src = (isServed ? '/' : '../etf_tracker/') + '?trend=' + encodeURIComponent(code) + '&embed=1';
+  m.style.display = 'flex';
+}
 const LTHEME = {};
 async function renderLeadTheme(hostId, file, us){
   const host = document.getElementById(hostId);
@@ -3070,10 +3087,11 @@ async function renderLeadTheme(hostId, file, us){
           '<div style="height:6px;border-radius:3px;background:var(--up);opacity:.75;margin-top:4px;width:'+Math.max(6, x.excess/mx*100)+'%"></div></div>'+
         '<div>초과 '+(us?'':'겹침 ')+'<b>+'+x.excess.toFixed(1)+'</b> <span class="mut">('+(us ? '상위 '+L.top_n+' 안 '+x.obs+'종목 · 평소 '+x.exp+' · 전체 '+x.n_all+'종목 중' : '관측 '+x.obs+' · 평소 '+x.exp)+' · ×'+x.lift+')</span> · 지난주 대비 '+d5(x.d5)+
           '<br><span class="mut">종목</span> '+x.stocks.map(stock).join(' · ')+
-          (x.etfs ? '<br><span class="mut">ETF</span> '+x.etfs.map(esc).join(' · ') : '')+'</div></div>').join('')+'</div>'+
+          (x.etfs && x.etfs.length ? '<br><span class="mut">ETF</span> '+x.etfs.map(e => typeof e === 'string' ? esc(e)
+            : '<a href="#" onclick="openEtfTrend(\''+e.code+'\');return false" style="color:inherit" title="구성종목 추이 열기">'+esc(e.name)+'</a> <span class="mut">'+e.share+'%</span>').join(' · ') : '')+'</div></div>').join('')+'</div>'+
     '<p class="sec-note" style="margin:6px 0 0">'+(us
       ? '평소 = 그 세부업종 종목 수 ÷ 전체 종목 수 × '+L.top_n+' — 종목이 많은 업종이 상위에 자주 들어가는 것은 빼고 본다. 미국 업종 ETF는 구성 종목 데이터가 없어 종목 기준으로 계산한다. 종목 코드를 누르면 Finviz.'
-      : '관측 = 상위 30 ETF 안에서 그 업종 종목이 나온 횟수 · 평소 = 전체 ETF('+L.n_pool+'개)에서의 출현율 × 30 — SK하이닉스·삼성전자처럼 원래 많은 ETF에 있는 대형주는 평소 값도 커서 보정된다. 지수 이름(예: 코스닥 통신)이 실제 사업과 다를 때 구성 종목으로 바로잡는 용도.')+'</p>';
+      : '종목 = 그 업종 종목 중 초과 겹침(관측 − 평소) 큰 순 · ETF = 상위 10종목 비중 중 그 업종이 30% 이상인 ETF, 그 비중(%) 큰 순 — 누르면 구성종목 추이 · 관측 = 상위 30 ETF 안에서 그 업종 종목이 나온 횟수 · 평소 = 전체 ETF('+L.n_pool+'개)에서의 출현율 × 30 — SK하이닉스·삼성전자처럼 원래 많은 ETF에 있는 대형주는 평소 값도 커서 보정된다. 지수 이름(예: 코스닥 통신)이 실제 사업과 다를 때 구성 종목으로 바로잡는 용도.')+'</p>';
 }
 async function renderSector(){
   const rg = document.getElementById('secRegion');
