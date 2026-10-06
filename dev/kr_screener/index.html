@@ -277,18 +277,24 @@ body.embed .wrap { padding-top:8px; }
     </div>
     <div id="secUs" style="display:none">
       <div class="card" style="margin-bottom:12px">
-      <h3 style="margin:0 0 8px;font-size:14px">주도 업종 상위 20 <span class="mut" style="font-weight:400;font-size:12px" id="usLeadNote"></span></h3>
-      <div class="chips" id="usLeadChips">
-        <span class="chip on" data-f="ma50">50일선 위</span><span class="chip" data-f="all">전체</span>
-        <span class="hsep"></span>
-        <span class="chip on" data-b="all">배지 전체</span><span class="chip" data-b="pull">🟢 눌림만</span><span class="chip" data-b="nohot">🔥 과열 빼기</span>
+      <h3 style="margin:0 0 8px;font-size:14px">RS 상위 <span id="usRsCnt"></span> <span class="mut" style="font-weight:400;font-size:12px" id="usRsNote"></span></h3>
+      <div class="chips" id="usRsKey">
+        <span style="font-size:11px;color:var(--ink-3);align-self:center">기준</span>
+        <span class="chip on" data-k="rs_adj">국내식 RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+      </div>
+      <div class="chips" id="usRsChips" style="margin-top:6px">
+        <span class="chip on" data-f="all">전체</span>
+        <span class="chip" data-f="ma5">5일선 위</span>
+        <span class="chip" data-f="ma10">10일선 위</span>
+        <span class="chip" data-f="ma20">20일선 위</span>
+        <span class="chip" data-f="ma50">10주선 위</span>
+        <span class="chip" data-f="jump">⚡당일 급등</span>
         <span class="hsep"></span>
         <span class="chip on" data-dup="1">유사지수 묶기</span>
       </div>
-      <div class="rank" id="usLeadList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
-      <p class="sec-note" style="margin:6px 0 0"><b>주도 점수</b> = 3개월·6개월 동안 S&amp;P500(SPY)보다 더 오른 정도의 순위 평균(0~100, 이 목록 안 상대 순위) ·
-        <b>↑↓</b> = 1주 전보다 순위가 오르내린 칸 수 · <b>🔥 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 눌림</b> = 어제 F&amp;G가 최근 5일 최저이면서 보라선(EMA20) 아래였고 오늘 반등.
-        근거: 국내 업종 150개·미국 업종 ETF 100개 백테스트에서 '3·6개월 벤치 대비 + 50일선 위'가 20거래일 뒤 초과수익이 가장 꾸준했다(국내 +1.65%·미국 +1.33%).</p>
+      <div class="rank" id="usRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
+      <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (SPY 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
+        <b>Mansfield RS</b> = (SPY 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20</p>
       </div>
       <div class="card" id="usSecChartCard">
         <div id="usSecHead" style="font-size:13.5px;margin-bottom:6px"></div>
@@ -304,19 +310,26 @@ body.embed .wrap { padding-top:8px; }
       </div>
     </div>
     <div id="secKr">
+    <div class="card" id="leadThemeCard" style="margin-bottom:12px"></div>
     <div class="card" id="secRsCard" style="margin-bottom:12px">
-      <h3 style="margin:0 0 8px;font-size:14px">주도 업종 상위 20 <span class="mut" style="font-weight:400;font-size:12px" id="krLeadNote"></span></h3>
-      <div class="chips" id="krLeadChips">
-        <span class="chip on" data-f="ma50">50일선 위</span><span class="chip" data-f="all">전체</span>
-        <span class="hsep"></span>
-        <span class="chip on" data-b="all">배지 전체</span><span class="chip" data-b="pull">🟢 눌림만</span><span class="chip" data-b="nohot">🔥 과열 빼기</span>
+      <h3 style="margin:0 0 8px;font-size:14px">RS 상위 <span id="krRsCnt"></span> <span class="mut" style="font-weight:400;font-size:12px" id="krRsNote"></span></h3>
+      <div class="chips" id="krRsKey">
+        <span style="font-size:11px;color:var(--ink-3);align-self:center">기준</span>
+        <span class="chip on" data-k="rs_adj">국내식 RS</span><span class="chip" data-k="ms">Mansfield RS</span>
+      </div>
+      <div class="chips" id="krRsChips" style="margin-top:6px">
+        <span class="chip on" data-f="all">전체</span>
+        <span class="chip" data-f="ma5">5일선 위</span>
+        <span class="chip" data-f="ma10">10일선 위</span>
+        <span class="chip" data-f="ma20">20일선 위</span>
+        <span class="chip" data-f="ma50">10주선 위</span>
+        <span class="chip" data-f="jump">⚡당일 급등</span>
         <span class="hsep"></span>
         <span class="chip on" data-dup="1">유사지수 묶기</span>
       </div>
-      <div class="rank" id="krLeadList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
-      <p class="sec-note" style="margin:6px 0 0"><b>주도 점수</b> = 3개월·6개월 동안 코스피(코스닥 업종·코스닥150은 코스닥)보다 더 오른 정도의 순위 평균(0~100, 이 목록 안 상대 순위) ·
-        <b>↑↓</b> = 1주 전보다 순위가 오르내린 칸 수 · <b>🔥 과열</b> = 30일선 대비 이격이 최근 1년 상위 3% · <b>🟢 눌림</b> = 어제 F&amp;G가 최근 5일 최저이면서 보라선(EMA20) 아래였고 오늘 반등.
-        근거: 국내 업종 150개·미국 업종 ETF 100개 백테스트에서 '3·6개월 벤치 대비 + 50일선 위'가 20거래일 뒤 초과수익이 가장 꾸준했다(국내 +1.65%·미국 +1.33%).</p>
+      <div class="rank" id="krRsList" style="margin-top:8px;max-height:560px;overflow-y:auto;overscroll-behavior:contain"></div>
+      <p class="sec-note" style="margin:6px 0 0"><b>국내식 RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비) 20·60·120·200일 이평 가중 이격 차이 ÷ 하루 변동폭 — 1.0 이상만 '전체'에 표시 ·
+        <b>Mansfield RS</b> = (KOSPI, 코스닥 업종·코스닥150은 KOSDAQ 대비 상대강도 ÷ 그 126일 평균 − 1) × 100 — 0 이상(최근 6개월 평균보다 강해지는 중)만 '전체'에 표시 · 필터 칩은 상위 20</p>
     </div>
     <div class="card" id="secChartCard">
       <div id="secHead" style="font-size:13.5px;margin-bottom:6px"></div>
@@ -2854,7 +2867,7 @@ document.getElementById('smodal').addEventListener('click', ev => { if (ev.targe
 document.addEventListener('keydown', ev => { if (ev.key==='Escape') closeStock(); });
 
 /* ── 업종·테마 지수 (2026-09-30) — 데이터 sector_idx.json (서버 data_collector/kis_sector_index) ── */
-let SEC = null, SEC_GRP = '전체', SEC_SORT = {k:'lead', d:-1}, SEC_SEL = null, SEC_CHART = null;
+let SEC = null, SEC_GRP = '전체', SEC_SORT = {k:'chg', d:-1}, SEC_SEL = null, SEC_CHART = null;
 async function loadSector(){
   if (SEC !== null) return SEC;
   try { const r = await fetch('sector_idx.json', {cache:'no-cache'}); SEC = r.ok ? await r.json() : false; } catch(e){ SEC = false; }
@@ -2866,34 +2879,64 @@ function _secGap(r){                 // 수급 F&G의 EMA20 대비 괴리(%) —
   return e ? (r.fs[r.fs.length-1] - e) / e * 100 : null;
 }
 let SEC_REGION = 'kr';
-const LEAD = {krLead:{f:'ma50', b:'all', dup:true}, usLead:{f:'ma50', b:'all', dup:true}};
+const RSC = {krRs:{k:'rs_adj', f:'all', dup:true}, usRs:{k:'rs_adj', f:'all', dup:true}};
 const leadBadge = b => b === 'hot' ? '<span title="30일선 대비 이격이 최근 1년 상위 3%" style="font-size:11px;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:0 4px">🔥 과열</span>'
   : b === 'pull' ? '<span title="어제 F&G가 최근 5일 최저·EMA20 아래였고 오늘 반등" style="font-size:11px;border:1px solid #16a34a;color:#16a34a;border-radius:4px;padding:0 4px">🟢 눌림</span>' : '';
-const leadDr = d => d == null ? '<span class="mut">신규</span>' : d > 0 ? '<b style="color:var(--up-text)">↑'+d+'</b>' : d < 0 ? '<span style="color:var(--down-text)">↓'+(-d)+'</span>' : '<span class="mut">–</span>';
-function renderLead(pid, rows, onPick, sel, asof){
-  const st = LEAD[pid], chips = document.getElementById(pid+'Chips');
+/* RS 상위 카드 — 국내·해외 공용, 기준 칩(국내식 RS / Mansfield RS) (2026-10-06 사용자 요청: 예전 국내 RS 화면으로 되돌리고 기준 비교) */
+function renderRsCard(pid, rows, sel, onPick){
+  const st = RSC[pid], chips = document.getElementById(pid+'Chips'), key = document.getElementById(pid+'Key');
   if (!chips.dataset.bound){ chips.dataset.bound = '1';
+    key.querySelectorAll('.chip[data-k]').forEach(ch => ch.onclick = () => { st.k = ch.dataset.k;
+      key.querySelectorAll('.chip[data-k]').forEach(x => x.classList.toggle('on', x===ch)); onPick(null); });
     chips.querySelectorAll('.chip[data-f]').forEach(ch => ch.onclick = () => { st.f = ch.dataset.f;
       chips.querySelectorAll('.chip[data-f]').forEach(x => x.classList.toggle('on', x===ch)); onPick(null); });
-    chips.querySelectorAll('.chip[data-b]').forEach(ch => ch.onclick = () => { st.b = ch.dataset.b;
-      chips.querySelectorAll('.chip[data-b]').forEach(x => x.classList.toggle('on', x===ch)); onPick(null); });
     const dc = chips.querySelector('.chip[data-dup]'); dc.onclick = () => { st.dup = !st.dup; dc.classList.toggle('on', st.dup); onPick(null); };
   }
-  let rs = rows.filter(r => r.lead != null && (!st.dup || !r.ldup) && (st.f === 'all' || r.lead_ma50)
-                     && (st.b === 'all' || (st.b === 'pull' ? r.badge === 'pull' : r.badge !== 'hot')));
-  rs.sort((a, b) => b.lead - a.lead);
-  document.getElementById(pid+'Note').textContent = (asof ? '기준 '+asof+' · ' : '') + '대상 '+rs.length+'개 중 상위 20';
-  const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+(v>0?'+':'')+v.toFixed(1)+'%</span>';
+  const K = st.k, MIN = K === 'ms' ? 0 : 1.0, KN = K === 'ms' ? 'Mansfield' : 'RS';
+  const base = rows.filter(r => r[K] != null && (!st.dup || !r.dup));
+  let rs = base.filter(r => r[K] >= MIN);
+  const jump = st.f === 'jump';
+  if (['ma5','ma10','ma20','ma50'].includes(st.f)) rs = rs.filter(r => r[st.f]);
+  if (jump) rs = base.filter(r => r.rs_dchg != null).sort((a,b) => b.rs_dchg - a.rs_dchg);
+  else rs.sort((a,b) => b[K] - a[K]);
+  document.getElementById(pid+'Cnt').innerHTML = jump ? '' :
+    '<b>'+rs.length+'</b>개 <span class="mut" style="font-weight:400;font-size:12px">('+KN+' ≥ '+MIN.toFixed(1)+' · 대표 '+base.length+'개 중)</span>';
+  const fmt = v => (v>0?'+':'')+v.toFixed(K === 'ms' ? 1 : 2);
   const host = document.getElementById(pid+'List');
-  host.innerHTML = rs.slice(0, 20).map((r, i) => {
+  host.innerHTML = (st.f === 'all' ? rs : rs.slice(0,20)).map((r,i) => {
     const f = (r.fs && r.fs.length ? r.fs : r.f) || [];
     return '<div class="row" style="grid-template-columns:22px 1fr auto;cursor:pointer'+(sel===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
-      '<span class="n">'+(i+1)+'</span><span class="nm"><b>'+esc(r.name)+'</b>'+(st.dup && r.lsim ? ' <span class="mut" style="font-size:11px">+'+r.lsim+' 유사</span>' : '')+
+      '<span class="n">'+(i+1)+'</span>'+
+      '<span class="nm"><b>'+esc(r.name)+'</b>'+(st.dup && r.sim ? ' <span class="mut" style="font-size:11px">+'+r.sim+' 유사</span>' : '')+
         ' <span class="mut" style="font-size:11px">'+esc(r.grp)+'</span> '+leadBadge(r.badge)+'</span>'+
-      '<span class="v" style="font-size:12px;white-space:nowrap">주도 <b>'+r.lead.toFixed(0)+'</b> '+leadDr(r.lead_dr)+
-        ' · 3개월 '+pc(r.ex3)+' · 6개월 '+pc(r.ex6)+' · F&G '+(f.length ? f[f.length-1].toFixed(1) : '—')+'</span></div>'; }).join('')
-    || '<div class="sec-note">조건에 맞는 업종이 없습니다.</div>';
+      '<span class="v" style="font-size:12px;white-space:nowrap">'+
+        (jump ? '⚡ <b style="color:var(--up-text)">'+(r.rs_dchg>0?'+':'')+r.rs_dchg.toFixed(2)+'</b> <span class="mut">(RS '+(r.rs_adj??0).toFixed(2)+')</span>'
+              : KN+' <b style="color:var(--'+(r[K]>0?'up':'down')+'-text)">'+fmt(r[K])+'</b>'+
+                (K === 'ms' ? (r.rs_adj != null ? ' <span class="mut">(RS '+r.rs_adj.toFixed(2)+')</span>' : '')
+                            : (r.ms != null ? ' <span class="mut">(Mansfield '+(r.ms>0?'+':'')+r.ms.toFixed(1)+')</span>' : '')))+
+        (r.rs != null ? ' · 초과 '+(r.rs>0?'+':'')+r.rs.toFixed(1)+'%' : '')+
+        ' · '+(r.rs_streak ? r.rs_streak+(r.rs_streak>=15?'일+':'일')+' 연속' : '연속 —')+
+        ' · F&G'+(r.fs && r.fs.length ? '(수급) ' : ' ')+(f.length ? f[f.length-1].toFixed(1) : '<span class="mut">—</span>')+
+      '</span></div>'; }).join('') || '<div class="sec-note">'+(jump ? '전일 값이 쌓이면 표시됩니다.' : KN+' '+MIN.toFixed(1)+' 이상인 지수가 없습니다 — 주도 업종이 없는 장.')+'</div>';
   host.querySelectorAll('.row[data-c]').forEach(el => el.onclick = () => onPick(el.dataset.c, true));
+}
+/* 주도 테마 — RS(Mansfield) 상위 30 ETF의 비중 상위 종목 겹침을 업종으로 묶음, 평소 출현율 보정 (kr_screener/lead_theme) */
+let LTHEME = null;
+async function renderLeadTheme(){
+  const host = document.getElementById('leadThemeCard');
+  if (LTHEME === null){ try { const r = await fetch('lead_theme.json', {cache:'no-cache'}); LTHEME = r.ok ? await r.json() : false; } catch(e){ LTHEME = false; } }
+  if (!LTHEME || !LTHEME.themes){ host.style.display = 'none'; return; }
+  const L = LTHEME, mx = Math.max(...L.themes.map(x => x.excess)) || 1;
+  const d5 = v => v == null ? '<span class="mut">—</span>' : v > 0 ? '<b style="color:var(--up-text)">▲'+v.toFixed(1)+'</b>' : v < 0 ? '<span style="color:var(--down-text)">▼'+(-v).toFixed(1)+'</span>' : '<span class="mut">0</span>';
+  host.innerHTML = '<h3 style="margin:0 0 4px;font-size:14px">주도 테마 <span class="mut" style="font-weight:400;font-size:12px">RS(Mansfield) 상위 30개 국내 주식 ETF의 비중 상위 10종목이 얼마나 겹치나 — 평소 출현율을 빼고 업종별로 · ETF 기준 '+
+      L.day.slice(4,6)+'/'+L.day.slice(6)+' · 구성 '+L.snap.slice(4,6)+'/'+L.snap.slice(6)+'</span></h3>'+
+    '<div style="display:grid;gap:6px;margin-top:6px">'+L.themes.map(x =>
+      '<div style="display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:start;font-size:12.5px">'+
+        '<div><b>'+esc(x.ind)+'</b><div style="height:6px;border-radius:3px;background:var(--up);opacity:.75;margin-top:4px;width:'+Math.max(6, x.excess/mx*100)+'%"></div></div>'+
+        '<div>초과 겹침 <b>+'+x.excess.toFixed(1)+'</b> <span class="mut">(관측 '+x.obs+' · 평소 '+x.exp+' · ×'+x.lift+')</span> · 지난주 대비 '+d5(x.d5)+
+          '<br><span class="mut">종목</span> '+x.stocks.map(s => '<span style="cursor:pointer" onclick="openStock(\''+s.code+'\')">'+esc(s.name)+'</span>').join(' · ')+
+          '<br><span class="mut">ETF</span> '+x.etfs.map(esc).join(' · ')+'</div></div>').join('')+'</div>'+
+    '<p class="sec-note" style="margin:6px 0 0">관측 = 상위 30 ETF 안에서 그 업종 종목이 나온 횟수 · 평소 = 전체 ETF('+L.n_pool+'개)에서의 출현율 × 30 — SK하이닉스·삼성전자처럼 원래 많은 ETF에 있는 대형주는 평소 값도 커서 보정된다. 지수 이름(예: 코스닥 통신)이 실제 사업과 다를 때 구성 종목으로 바로잡는 용도.</p>';
 }
 async function renderSector(){
   const rg = document.getElementById('secRegion');
@@ -2916,35 +2959,38 @@ async function renderSector(){
   const k = SEC_SORT.k, dir = SEC_SORT.d;
   rows.sort((a,b) => k === 'name' ? dir * a.name.localeCompare(b.name) : dir * ((a[k] ?? -1e9) - (b[k] ?? -1e9)));
   note.textContent = rows.length + '개 · 기준 ' + d.asof + (rows.some(r => r.prov) ? ' · 장중 잠정(현재가)' : '');
-  const cols = [['name','지수','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r60','3개월'],['lead','주도'],['ex3','3개월 초과'],['ex6','6개월 초과'],['badge','위치'],['fsl','F&G(수급)']];
+  const cols = [['name','지수','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r60','3개월'],['rs_adj','RS'],['ms','Mansfield'],['fsl','F&G(수급)'],['gap','EMA20 괴리']];
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+fmtPct(v)+'</span>';
   tb.innerHTML = '<thead><tr>' + cols.map(([c,l,al]) => '<th class="'+(al||'')+'" data-k="'+c+'">'+l+(SEC_SORT.k===c?(SEC_SORT.d>0?' ▲':' ▼'):'')+'</th>').join('') + '</tr></thead><tbody>' +
     rows.map(r => '<tr style="cursor:pointer'+(SEC_SEL===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
       '<td class="l"><b>'+esc(r.name)+'</b></td><td class="l" style="color:var(--ink-3)">'+esc(r.grp)+'</td>'+
       '<td>'+fmtNum(r.c)+'</td><td>'+pc(r.chg)+'</td><td>'+pc(r.r5)+'</td><td>'+pc(r.r20)+'</td><td>'+pc(r.r60)+'</td>'+
-      '<td>'+(r.lead==null?'—':'<b>'+r.lead.toFixed(0)+'</b> '+leadDr(r.lead_dr))+'</td><td>'+pc(r.ex3)+'</td><td>'+pc(r.ex6)+'</td><td>'+leadBadge(r.badge)+'</td>'+
+      '<td>'+(r.rs_adj==null?'—':'<span style="color:var(--'+(r.rs_adj>0?'up':'down')+'-text)">'+r.rs_adj.toFixed(2)+'</span>')+'</td>'+
+      '<td>'+(r.ms==null?'—':'<span style="color:var(--'+(r.ms>0?'up':'down')+'-text)">'+(r.ms>0?'+':'')+r.ms.toFixed(1)+'</span>')+'</td>'+
       '<td>'+(r.fsl==null?'<span style="color:var(--ink-3);font-size:11px" title="구성 종목 수급 이력이 시총 70%·5종목 미만">수급 데이터 부족</span>':'<b>'+r.fsl.toFixed(1)+'</b>')+'</td>'+
-      '</tr>').join('') + '</tbody>';
+      '<td>'+(r.gap==null?'—':pc(r.gap))+'</td></tr>').join('') + '</tbody>';
   tb.querySelectorAll('th').forEach(th => th.onclick = () => {
     const kk = th.dataset.k; SEC_SORT = {k:kk, d: SEC_SORT.k===kk ? -SEC_SORT.d : (kk==='name'||kk==='grp' ? 1 : -1)}; renderSector(); });
   tb.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => { SEC_SEL = tr.dataset.c; renderSector(); });
-  renderLead('krLead', d.rows, (c, scroll) => { if (c) SEC_SEL = c; renderSector();
-    if (scroll) document.getElementById('secChartCard').scrollIntoView({behavior:'smooth', block:'start'}); }, SEC_SEL, d.asof);
-  if (!SEC_SEL || !d.rows.some(r => r.code === SEC_SEL)) SEC_SEL = ([...d.rows].filter(r => r.lead != null && r.lead_ma50 && !r.ldup).sort((a,b) => b.lead - a.lead)[0] || rows[0] || {}).code;
+  renderLeadTheme();
+  renderRsCard('krRs', d.rows, SEC_SEL, (c, scroll) => { if (c) SEC_SEL = c; renderSector();
+    if (scroll) document.getElementById('secChartCard').scrollIntoView({behavior:'smooth', block:'start'}); });
+  if (!SEC_SEL || !d.rows.some(r => r.code === SEC_SEL)) SEC_SEL = ([...d.rows].filter(r => r.rs_adj != null && !r.dup).sort((a,b) => b.rs_adj - a.rs_adj)[0] || rows[0] || {}).code;
   drawSectorChart(d.rows.find(r => r.code === SEC_SEL));
 }
 /* ── 미국 업종·테마 ETF (2026-10-04) — us_sector.json (data_collector/us_sector, 사용자 코랩 코드 이식) ── */
-let USSEC = null, USSEC_G = '전체', USSEC_SEL = null, USSEC_SORT = {k:'lead', d:-1}, USSEC_CHART = null;
+let USSEC = null, USSEC_G = '전체', USSEC_SEL = null, USSEC_SORT = {k:'rs_adj', d:-1}, USSEC_CHART = null;
 async function renderUsSector(){
   if (USSEC === null){ try { const r = await fetch('us_sector.json', {cache:'no-cache'}); USSEC = r.ok ? await r.json() : false; } catch(e){ USSEC = false; } }
-  const d = USSEC, list = document.getElementById('usLeadList');
+  const d = USSEC, list = document.getElementById('usRsList');
   if (!d){ list.innerHTML = '<div class="sec-note">미국 업종 ETF 데이터가 아직 없습니다 (다음 갱신 때 생성).</div>'; return; }
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+(v>0?'+':'')+v.toFixed(2)+'%</span>';
   const heat = v => v == null ? '—' : '<b style="color:'+(v>=100?'#dc2626':v>=70?'#F57C00':'var(--ink-2)')+'">'+v.toFixed(0)+'</b>';
   const al = r => r.full_al ? '<span title="가격 > 4주 > 13주 > 26주 > 52주선, '+r.full_al_s+'부터">🔥완전 '+r.full_al_n+'일</span>'
                  : r.ma_al ? '<span title="4주 > 13주 > 26주 > 52주선, '+r.ma_al_s+'부터">📈이평 '+r.ma_al_n+'일</span>' : '<span class="mut">—</span>';
-  renderLead('usLead', d.rows, (c, scroll) => { if (c) USSEC_SEL = c; renderUsSector();
-    if (scroll) document.getElementById('usSecChartCard').scrollIntoView({behavior:'smooth', block:'start'}); }, USSEC_SEL, d.asof+' (미국 종가)');
+  document.getElementById('usRsNote').textContent = '기준 '+d.asof+' (미국 종가)';
+  renderRsCard('usRs', d.rows, USSEC_SEL, (c, scroll) => { if (c) USSEC_SEL = c; renderUsSector();
+    if (scroll) document.getElementById('usSecChartCard').scrollIntoView({behavior:'smooth', block:'start'}); });
   // 전체 표
   const grps = ['전체', ...new Set(d.rows.map(r => r.grp))], gc = document.getElementById('usSecGrp');
   gc.innerHTML = grps.map(g => '<span class="chip'+(g===USSEC_G?' on':'')+'" data-g="'+g+'">'+g+'</span>').join('');
@@ -2954,19 +3000,20 @@ async function renderUsSector(){
   all.sort((a,b) => k === 'name' || k === 'grp' ? dir * String(a[k]).localeCompare(String(b[k])) : dir * ((a[k] ?? -1e9) - (b[k] ?? -1e9)));
   document.getElementById('usSecCnt').textContent = all.length + '개 · 갱신 ' + d.updated;
   const cols = [['name','ETF','l'],['grp','분류','l'],['c','현재'],['chg','등락'],['r5','1주'],['r20','1개월'],['r126','6개월'],
-                ['lead','주도'],['ex3','3개월 초과'],['ex6','6개월 초과'],['heat','과열도'],['badge','위치'],['full_al_n','정배열']];
+                ['rs_adj','RS'],['ms','Mansfield'],['heat','과열도'],['full_al_n','정배열']];
   const tb = document.getElementById('usSecTable');
   tb.innerHTML = '<thead><tr>' + cols.map(([c,l,a]) => '<th class="'+(a||'')+'" data-k="'+c+'">'+l+(USSEC_SORT.k===c?(dir>0?' ▲':' ▼'):'')+'</th>').join('') + '</tr></thead><tbody>' +
     all.map(r => '<tr style="cursor:pointer'+(USSEC_SEL===r.code?';background:var(--hover-wash)':'')+'" data-c="'+r.code+'">'+
       '<td class="l"><b>'+esc(r.name)+'</b></td><td class="l" style="color:var(--ink-3)">'+esc(r.grp)+'</td><td>'+fmtNum(r.c)+'</td>'+
       '<td>'+pc(r.chg)+'</td><td>'+pc(r.r5)+'</td><td>'+pc(r.r20)+'</td><td>'+pc(r.r126)+'</td>'+
-      '<td>'+(r.lead==null?'—':'<b>'+r.lead.toFixed(0)+'</b> '+leadDr(r.lead_dr))+'</td><td>'+pc(r.ex3)+'</td><td>'+pc(r.ex6)+'</td>'+
-      '<td>'+heat(r.heat)+'</td><td>'+leadBadge(r.badge)+'</td><td>'+al(r)+'</td></tr>').join('') + '</tbody>';
+      '<td>'+(r.rs_adj==null?'—':'<span style="color:var(--'+(r.rs_adj>0?'up':'down')+'-text)">'+r.rs_adj.toFixed(2)+'</span>')+'</td>'+
+      '<td>'+(r.ms==null?'—':'<span style="color:var(--'+(r.ms>0?'up':'down')+'-text)">'+(r.ms>0?'+':'')+r.ms.toFixed(1)+'</span>')+'</td>'+
+      '<td>'+heat(r.heat)+'</td><td>'+al(r)+'</td></tr>').join('') + '</tbody>';
   tb.querySelectorAll('th').forEach(th => th.onclick = () => { const kk = th.dataset.k;
     USSEC_SORT = {k:kk, d: USSEC_SORT.k===kk ? -USSEC_SORT.d : (kk==='name'||kk==='grp' ? 1 : -1)}; renderUsSector(); });
   tb.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => { USSEC_SEL = tr.dataset.c; renderUsSector();
     document.getElementById('usSecChartCard').scrollIntoView({behavior:'smooth', block:'start'}); });
-  if (!USSEC_SEL || !d.rows.some(r => r.code === USSEC_SEL)) USSEC_SEL = ([...d.rows].filter(r => r.lead != null).sort((a,b) => b.lead - a.lead)[0] || d.rows[0]).code;
+  if (!USSEC_SEL || !d.rows.some(r => r.code === USSEC_SEL)) USSEC_SEL = ([...d.rows].filter(r => r.rs_adj != null && !r.dup).sort((a,b) => b.rs_adj - a.rs_adj)[0] || d.rows[0]).code;
   drawUsSectorChart(d.rows.find(r => r.code === USSEC_SEL));
 }
 function drawUsSectorChart(r){
@@ -2977,7 +3024,7 @@ function drawUsSectorChart(r){
   const t = x => x.slice(0,4)+'-'+x.slice(4,6)+'-'+x.slice(6);
   const pc = v => v == null ? '—' : '<span style="color:var(--'+(v>0?'up':v<0?'down':'ink-3')+'-text)">'+(v>0?'+':'')+v.toFixed(2)+'%</span>';
   hd.innerHTML = '<b>'+esc(r.name)+'</b> <span class="mut">'+esc(r.grp)+'</span> · $'+fmtNum(r.c)+' '+pc(r.chg)+
-    ' · 주도 <b>'+(r.lead==null?'—':r.lead.toFixed(0))+'</b> · 3개월 초과 '+pc(r.ex3)+' · 6개월 초과 '+pc(r.ex6)+' '+leadBadge(r.badge)+
+    ' · RS <b>'+(r.rs_adj==null?'—':r.rs_adj.toFixed(2))+'</b> · Mansfield '+(r.ms==null?'—':(r.ms>0?'+':'')+r.ms.toFixed(1))+' '+leadBadge(r.badge)+
     ' · 30일 이격 '+pc(r.gap30)+' / 97% 구간 '+(r.p97==null?'—':r.p97.toFixed(2)+'%')+' · 과열도 <b>'+(r.heat??'—')+'</b>'+
     (r.full_al ? ' · 🔥완전 정배열 '+r.full_al_s+'부터 '+r.full_al_n+'거래일' : r.ma_al ? ' · 📈이평 정배열 '+r.ma_al_s+'부터 '+r.ma_al_n+'거래일' : '');
   const ch = USSEC_CHART = LWC.createChart(el, smChartOpts());
