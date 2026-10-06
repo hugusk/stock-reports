@@ -2486,6 +2486,14 @@ if (initView === 'kr' || initView === 'dash') {
   if (legacy[initView]) document.querySelector(`#scr-tabs button[data-t="${initView}"]`)?.click();
 }
 if ($('#v-kr').classList.contains('on')) loadKrFrame();
+// KR 스크리너 '주도 테마' ETF 클릭 팝업용 딥링크 (2026-10-06) — ?trend=코드&embed=1 이면 머리·탭 없이 구성종목 추이만
+const _tq = new URLSearchParams(location.search);
+if (_tq.get('embed') === '1') {
+  const st = document.createElement('style');
+  st.textContent = 'header.page, #main-tabs, #sub-tabs { display:none !important } body { padding-top:4px }';
+  document.head.appendChild(st);
+}
+if (_tq.get('trend')) { document.querySelector('#main-tabs button[data-v="dash"]')?.click(); gotoTrend(_tq.get('trend')); }
 const wq = new URLSearchParams(location.search).get('wq');
 if (wq) { document.querySelector('#main-tabs button[data-v="dash"]')?.click(); gotoWeights(wq); }
 const hm = location.hash.match(/^#etf=([0-9A-Za-z]{6})/);
