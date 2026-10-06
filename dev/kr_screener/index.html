@@ -1869,8 +1869,8 @@ function macroPanel(q){
         '<br><span class="mut">단계: 10Y−3M −0.5 미만 빨강 · 0 미만 주황 · 0~0.5 노랑 · 0.5~1.0 연두 · 1.0 이상 초록 (최근 1년 안에 역전했다 풀렸으면 노랑까지만)</span>' : '')+
       (q.pcr && q.pcr.hist && q.pcr.hist.length ? '<br>CBOE 주식 Put/Call 5일평균 <b>'+q.pcr.avg5+'</b> · 최근 5일 '+
         q.pcr.hist.slice(-5).map(h => h[0].slice(5)+' '+h[1].toFixed(2)).join(' · ')+
-        '<br><span class="mut">단계(역발상 순서): 빨강 극단적 낙관 · 주황 낙관 · 노랑 중립 · 연두 공포 · 초록 극단적 공포 — 다들 낙관할 때 경계, 공포가 극단일 때 오히려 바닥 근처였다는 뜻 · US 기준 0.45 · 0.55 · 0.75 · 0.95</span>' : '')+
-      '<br><span class="mut">KR Put/Call = KOSPI200 옵션(월물+위클리) 풋 거래량 ÷ 콜 거래량, 금융위 공개 원장 · 국내는 평소 0.9 안팎이라 기준을 국내 이력 분포로: 하위 10% 극단적 낙관 · 하위 30% 낙관 · 가운데 중립 · 상위 30% 공포 · 상위 10% 극단적 공포</span>') : '')+
+        '<br><span class="mut">US 단계: 0.95 이상 빨강(극단 공포) · 0.75~0.95 노랑(공포) · 0.55~0.75 초록(정상) · 0.45~0.55 연두(낙관) · 0.45 미만 주황(극단 낙관)</span>' : '')+
+      '<br><span class="mut">KR Put/Call = KOSPI200 옵션(월물+위클리) 풋 거래량 ÷ 콜 거래량, 금융위 공개 원장 · 국내는 평소 0.9 안팎이라 기준을 국내 이력(5일 평균) 분포로: 하위 5% 빨강(극단적 낙관) · 하위 30% 주황(낙관) · 가운데 노랑(중립) · 상위 30% 연두(공포) · 상위 5% 초록(극단적 공포)</span>') : '')+
     '<details open style="margin-top:6px"><summary style="cursor:pointer;font-size:13px;font-weight:600">미국 ETF → 한국 주식 자금 (주간·월간 누적)</summary>'+
       '<div class="chips" id="usFlowAggChips" style="margin:6px 0 0"><span class="chip on" data-p="w">주간</span><span class="chip" data-p="m">월간</span></div>'+
       '<div id="usFlowAgg" style="height:200px;margin:6px 0 2px"></div>'+
