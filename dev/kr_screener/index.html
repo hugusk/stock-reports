@@ -351,7 +351,7 @@ body.embed .wrap { padding-top:8px; }
   </div>
 
   <div class="view" id="view-rs">
-    <h2 class="sec">RS 상위 20 기업 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">자체 종합점수 상위 — 개별 기업만 (ETF 제외)</span></h2>
+    <h2 class="sec">Pulse RS 상위 20 기업 <span style="font-weight:400;font-size:12px;color:var(--ink-3)">Pulse RS 기반 자체 종합점수(거래대금·회전율·수급·연속일 반영) — 빠른 변화를 보는 화면 · 개별 기업만 (ETF 제외)</span></h2>
     <div class="card">
       <div class="chips" id="rsChips">
         <span class="chip on" data-ma="all">전체</span>
@@ -731,7 +731,7 @@ const TF = [
 ];
 const VIEWS = [
   {k:'dashboard', l:'대시보드'},
-  {k:'heatmap', l:'히트맵'}, {k:'sector', l:'업종지수'}, {k:'rs', l:'RS 상위'}, {k:'bottom', l:'F&G시그널'},
+  {k:'heatmap', l:'히트맵'}, {k:'sector', l:'업종지수'}, {k:'rs', l:'Pulse RS 상위'}, {k:'bottom', l:'F&G시그널'},
   {k:'perf', l:'퍼포먼스'},
   {k:'spectrum', l:'스펙트럼'}, {k:'eps', l:'EPS변동'}, {k:'valuation', l:'밸류에이션'}, {k:'screener', l:'스크리너'},
 ];
@@ -1353,7 +1353,7 @@ const COLS = [
   {k:'cap', l:'시총', f:fmtCap},
   {k:'price', l:'현재가', f:fmtInt},
   {k:'chg', l:'등락', sign:true, f:fmtPct},
-  {k:'rs_pct', l:'RS', f:v=>v==null?'—':'<b>'+v+'</b>'},
+  {k:'rs_pct', l:'Pulse RS', f:v=>v==null?'—':'<b>'+v+'</b>'},
   {k:'w1', l:'1주', sign:true, f:fmtPct1},
   {k:'m1', l:'1개월', sign:true, f:fmtPct1},
   {k:'m3', l:'3개월', sign:true, f:fmtPct1},
@@ -2095,7 +2095,7 @@ function interCard(d){
   const div = document.createElement('div'); div.className = 'dcard wide';
   let mkt = MARKET, ma = 'all', sort = 'pct';
   const render = () => {
-    div.innerHTML = '<h3>RS × 수급 주도주 <span style="font-weight:400;color:var(--ink-3);font-size:12px">기관 매수 종목 중 RS 상위/급등</span>'+filterChips(mkt, ma)+'</h3>'+
+    div.innerHTML = '<h3>Pulse RS × 수급 주도주 <span style="font-weight:400;color:var(--ink-3);font-size:12px">기관 매수 종목 중 RS 상위/급등</span>'+filterChips(mkt, ma)+'</h3>'+
       flInterBody(d, mkt, ma, sort);
     div.querySelectorAll('.hdr-chips [data-mkt]').forEach(c => c.onclick = () => { mkt = c.dataset.mkt; render(); });
     div.querySelectorAll('.hdr-chips [data-ma]').forEach(c => c.onclick = () => { ma = c.dataset.ma; render(); });
@@ -2141,7 +2141,7 @@ function flInterBody(d, mkt, ma, sort){
   }).join('');
   const sbtn = (k,l) => '<span class="chip'+(sort===k?' on':'')+'" data-isort="'+k+'">'+l+'</span>';
   return '<div class="chips" id="flISort" style="margin:2px 0 10px"><span style="font-size:12px;color:var(--ink-3);align-self:center">정렬</span>'+
-      sbtn('pct','RS 상위')+sbtn('dchg','⚡당일 급등')+sbtn('cap','시총대비')+sbtn('mkt','총매수대비')+'</div>'+
+      sbtn('pct','Pulse RS 상위')+sbtn('dchg','⚡당일 급등')+sbtn('cap','시총대비')+sbtn('mkt','총매수대비')+'</div>'+
     (sort==='dchg' ? '<div class="sec-note" style="margin:-4px 0 8px">※ 당일 급등은 전일 대비라 RS 복구 다음날부터 정확</div>' : '')+
     '<div class="rank">'+(list || '<div class="sec-note">조건에 맞는 종목이 없습니다.</div>')+'</div>';
 }
@@ -2397,7 +2397,7 @@ async function openStock(code){
     M('시가총액', fmtCap(s.cap)) + M('PER', s.per==null?'—':s.per.toFixed(1)) +
     M('PBR', s.pbr==null?'—':s.pbr.toFixed(2)) + M('ROE', s.roe==null?'—':s.roe.toFixed(1)+'%') +
     M('배당률', s.dy==null?'—':s.dy.toFixed(2)+'%') + M('RSI', s.rsi==null?'—':s.rsi.toFixed(1)) +
-    M('RS', (s.rs_pct??'—')) +   // 대금 배율(구성요소)은 미표시
+    M('Pulse RS', (s.rs_pct??'—')) +   // 대금 배율(구성요소)은 미표시
     M('F&G', '<span id="sm-meta-fng">—</span>') +
     M('12MF PSR', '<span id="sm-mf-psr" title="현재 시가총액 ÷ 내년(2027E) 매출 예상치">—</span>') +
     M('12MF PER', '<span id="sm-mf-per" title="현재 시가총액 ÷ 내년(2027E) 순이익 예상치">—</span>') +
