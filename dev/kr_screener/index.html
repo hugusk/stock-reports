@@ -1788,7 +1788,7 @@ function usLiqCard(q){
   const LV = ['#dc2626','#f97316','#eab308','#84cc16','#16a34a'];
   const dots = lv => '<span style="display:inline-flex;gap:3px;vertical-align:-1px" title="'+lv+'/5">'+LV.map((c, i) =>
     '<span style="width:10px;height:10px;border-radius:50%;background:'+c+';opacity:'+(i === lv-1 ? 1 : 0.18)+'"></span>').join('')+'</span>';
-  const row = ([k, v, lv]) => '<tr><td class="l" style="white-space:nowrap;color:var(--ink-1)">'+esc(k)+'</td>'+
+  const row = ([k, v, lv]) => '<tr data-liq="'+esc(k)+'" style="cursor:pointer"><td class="l" style="white-space:nowrap;color:var(--ink-1)">'+esc(k)+'</td>'+
     '<td class="l" style="white-space:nowrap">'+(lv ? dots(lv) : '')+'</td><td class="l" style="color:var(--ink-1)">'+esc(v)+'</td></tr>';
   const sg = s => '<li style="color:'+(s[0]==='+'?'#16a34a':s[0]==='-'?'#dc2626':'var(--ink-2)')+'">'+esc(s[1])+' ('+s[0]+')</li>';
   const li = s => '<li>'+esc(s)+'</li>';
@@ -1805,8 +1805,10 @@ function usLiqCard(q){
     '<div style="overflow-x:auto"><table class="data" style="font-size:12.5px"><tbody>'+q.summary.map(row).join('')+'</tbody></table></div>'+
     '<div style="font-size:12.5px;margin-top:6px;color:var(--ink-1)">자산별 해석 · '+q.assets.map(([k, v]) =>
       '<b>'+esc(k)+'</b> <span style="color:var(--ink-1)">'+esc(v)+'</span>').join(' · ')+'</div>'+
-    '<div id="usLiqChart" style="height:180px;margin:8px 0 2px"></div>'+
-    '<div class="mut" style="font-size:11px">파랑 = Fed/Treasury Liquidity Proxy(Fed 자산 − TGA − RRP, 조 달러, 왼쪽) · 주황 = 2Y 국채금리(%) · 최근 2년 주간</div>'+
+    (q.hist && q.hist.weeks ? '<div style="font-size:13px;font-weight:600;margin:10px 0 4px">신호등 이력 <span class="mut" style="font-weight:400;font-size:11.5px">최근 '+q.hist.weeks.length+'주 · 매주 금요일, 그 날까지의 데이터로 다시 판정 · 줄(또는 위 표의 줄)을 누르면 아래에 상세 차트</span></div>'+
+      '<div id="usLiqGrid" style="overflow-x:auto"></div>'+
+      '<div id="usLiqDetHead" style="font-size:13px;margin:10px 0 2px"></div><div id="usLiqChart" style="height:230px;margin:2px 0"></div>'+
+      '<div class="mut" style="font-size:11px">아래 칸 = 그 주의 단계(빨강~초록) · FRED 과거값은 나중에 수정된 최신본이라(고용·M2 등) 그 당시 실제로 보였던 판정과 조금 다를 수 있음</div>' : '')+
     det('금리 · Fed · 은행 신용 (현재 / 최근 4주 변화)',
       '10Y 실질 '+n(R.Real10Y,'%')+' ('+n(C.Real10Y,'%p',1)+') · 2Y '+n(R.Treasury2Y,'%')+' ('+n(C.Treasury2Y,'%p',1)+') · 10Y '+n(R.Treasury10Y,'%')+' ('+n(C.Treasury10Y,'%p',1)+
       ') · 30Y '+n(R.Treasury30Y,'%')+' ('+n(C.Treasury30Y,'%p',1)+')<br>10Y-2Y '+n(R.Spread10_2,'%p')+' ('+n(C.Spread10_2,'%p',1)+') · 30Y-10Y '+n(R.Spread30_10,'%p')+' ('+n(C.Spread30_10,'%p',1)+')'+
@@ -1862,7 +1864,47 @@ function drawUsFlowAgg(u){
       priceFormat:{type:'custom', formatter:fmt}}).setData(ks.map(k => ({time:k, value:Math.round(cum += agg[k])})));
   c.timeScale().fitContent();
 }
+let LIQ_SEL = '기존 유동성';
+const LIQ_LV = ['#dc2626','#f97316','#eab308','#84cc16','#16a34a'];
+function drawLiqGrid(q){
+  const el = document.getElementById('usLiqGrid'); if (!el || !q.hist) return;
+  const W = q.hist.weeks, names = q.summary.map(r => r[0]);
+  const mon = W.map((d, i) => (i === 0 || d.slice(5,7) !== W[i-1].slice(5,7)) ? (+d.slice(5,7))+'월' : '');
+  const cols = 'grid-template-columns:150px repeat('+W.length+', minmax(7px,1fr))';
+  el.innerHTML = '<div style="display:grid;'+cols+';gap:1px;font-size:10px;color:var(--ink-3);min-width:560px"><span></span>'+
+      mon.map(m => '<span style="white-space:nowrap;overflow:visible">'+m+'</span>').join('')+'</div>'+
+    names.map(n => { const lv = q.hist.rows[n] || [];
+      return '<div data-liq="'+esc(n)+'" style="display:grid;'+cols+';gap:1px;align-items:center;cursor:pointer;min-width:560px;padding:1px 0;'+
+        (n === LIQ_SEL ? 'background:var(--hover-wash);' : '')+'"><span style="font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-1)">'+esc(n)+'</span>'+
+        W.map((d, i) => '<span title="'+d+' · '+(lv[i] ? lv[i]+'단계' : '데이터 없음')+'" style="height:12px;border-radius:2px;background:'+(lv[i] ? LIQ_LV[lv[i]-1] : 'var(--grid)')+'"></span>').join('')+'</div>'; }).join('');
+  document.querySelectorAll('#usLiqCard [data-liq]').forEach(r => r.onclick = () => { LIQ_SEL = r.dataset.liq; drawLiqGrid(q); drawUsLiqChart(q); });
+}
 function drawUsLiqChart(q){
+  if (q.hist){
+    drawLiqGrid.__q !== q && (drawLiqGrid.__q = q, drawLiqGrid(q));
+    const el = document.getElementById('usLiqChart'); if (!el) return;
+    if (US_LIQ_CHART){ try { US_LIQ_CHART.remove(); } catch(e){} US_LIQ_CHART = null; }
+    el.innerHTML = '';
+    const C = (q.charts || {})[LIQ_SEL], lv = q.hist.rows[LIQ_SEL] || [];
+    const row = q.summary.find(r => r[0] === LIQ_SEL) || [];
+    document.getElementById('usLiqDetHead').innerHTML = '<b>'+esc(LIQ_SEL)+'</b> <span class="mut" style="font-size:12px">'+esc(row[1]||'')+'</span>';
+    const ch = US_LIQ_CHART = LWC.createChart(el, Object.assign(smChartOpts(), {leftPriceScale:{visible:true, borderColor:cssVar('--grid')}}));
+    const pal = ['#1e88e5', '#F57C00', '#8e44ad', '#16a34a'];
+    let first = null;
+    ((C && C.s) || []).forEach((s, i) => { const ser = ch.addSeries(LWC.LineSeries, {color:pal[i % pal.length], lineWidth:i ? 1.4 : 2,
+        priceScaleId:s.ax === 'r' ? 'right' : 'left', priceLineVisible:false, title:s.name});
+      ser.setData(s.d.map(([d, v]) => ({time:d, value:v}))); if (!first && s.ax !== 'r') first = ser; });
+    if (first) (C.lines || []).forEach(([v, nm]) => first.createPriceLine({price:v, color:cssVar('--ink-3'), lineWidth:1, lineStyle:2, axisLabelVisible:false, title:nm}));
+    const lvSer = ch.addSeries(LWC.HistogramSeries, {priceLineVisible:false, lastValueVisible:false, title:'단계'}, 1);
+    lvSer.setData(q.hist.weeks.map((d, i) => lv[i] ? {time:d, value:lv[i], color:LIQ_LV[lv[i]-1]} : null).filter(Boolean));
+    try { ch.panes()[1].setHeight(50); } catch(e){}
+    if (!C) document.getElementById('usLiqDetHead').innerHTML += ' <span class="mut" style="font-size:11px">(재료 차트 없음 — 다른 줄을 합친 판정이라 단계 이력만)</span>';
+    ch.timeScale().fitContent();
+    return;
+  }
+  return drawUsLiqChartOld(q);
+}
+function drawUsLiqChartOld(q){
   const el = document.getElementById('usLiqChart');
   if (!el || !q.chart) return;
   if (US_LIQ_CHART){ try { US_LIQ_CHART.remove(); } catch(e){} }
